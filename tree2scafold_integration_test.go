@@ -101,6 +101,13 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 		if !strings.Contains(content, pc.wantPkg) {
 			t.Errorf("%s: missing %q in file contents", pc.path, pc.wantPkg)
 		}
+		// Print content of the first 10 lines of each file for debugging
+		lines := strings.Split(content, "\n")
+		linesToPrint := 10
+		if len(lines) < linesToPrint {
+			linesToPrint = len(lines)
+		}
+		t.Logf("Content of %s (first %d lines):\n%s", pc.path, linesToPrint, strings.Join(lines[:linesToPrint], "\n"))
 	}
    // Verify non-Go files (e.g., Python) have only comment headers and no package declarations
    pyPath := "scripts/helper.py"

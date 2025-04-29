@@ -1,10 +1,8 @@
 package scaffold
 
 import (
-	"bytes"
-	"fmt"
-	"path/filepath"
-	"text/template"
+   "fmt"
+   "path/filepath"
 )
 
 // FileGenerator produces the initial content for a file at relPath, given its comment.
@@ -61,24 +59,10 @@ func defaultGenerator(relPath, comment string) string {
 
 // generateGo produces the package stub for .go files.
 func generateGo(relPath, comment string) string {
-	pkg := inferPkg(relPath)
-	name := filepath.Base(relPath)
-	var buf bytes.Buffer
-	// raw-string literal for the template
-	const tpl = `
-{{- if .Comment}}// {{.Comment}}
-
-{{- end}}package {{.Pkg}}
-
-func main() {
-    // TODO: implement {{.File}}
-}
-`
-	t := template.Must(template.New("go").Parse(tpl))
-	_ = t.Execute(&buf, map[string]string{
-		"Pkg":     pkg,
-		"File":    name,
-		"Comment": comment,
-	})
-	return buf.String()
+   pkg := inferPkg(relPath)
+   name := filepath.Base(relPath)
+   if comment != "" {
+       return fmt.Sprintf("// %s\n\npackage %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", comment, pkg, name)
+   }
+   return fmt.Sprintf("package %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", pkg, name)
 }

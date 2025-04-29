@@ -46,10 +46,10 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 
 		// Choose generator based solely on file extension
 		var content string
-		switch filepath.Ext(n.Path) {
-		case ".go":
-			content = generateGo(n.Path, comment)
-		default:
+		ext := filepath.Ext(n.Path)
+		if generator, ok := generators[ext]; ok {
+			content = generator(n.Path, comment)
+		} else {
 			content = defaultGenerator(n.Path, comment)
 		}
 
