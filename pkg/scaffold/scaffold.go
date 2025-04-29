@@ -62,11 +62,13 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 }
 
 // inferPkg derives the Go package name from relPath.
-// cmd/* → main; otherwise the parent folder name.
+// Files under cmd/ or at the project root get package main;
+// otherwise use the name of the parent directory.
 func inferPkg(relPath string) string {
-	dir := filepath.Base(filepath.Dir(relPath))
-	if strings.HasPrefix(relPath, "cmd/") || dir == "" {
-		return "main"
-	}
-	return dir
+   dirPath := filepath.Dir(relPath)
+   // top-level files (Dir == ".") or cmd/* are main packages
+   if strings.HasPrefix(relPath, "cmd/") || dirPath == "." {
+       return "main"
+   }
+   return filepath.Base(dirPath)
 }

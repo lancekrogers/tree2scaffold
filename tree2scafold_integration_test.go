@@ -22,7 +22,7 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 	}
 
 	// ASCII tree input from `tree` output including comments
-	treeInput := `tree2scaffold/
+   treeInput := `tree2scaffold/
 ├── cmd/
 │   └── tree2scaffold/
 │       └── main.go        # entry-point
@@ -39,6 +39,8 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 ├── go.mod
 ├── go.sum
 ├── README.md
+├── scripts/
+│   └── helper.py          # python helper
 └── .gitignore
 `
 
@@ -55,17 +57,18 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 	}
 
 	// Expected paths to exist
-	expected := []string{
-		"cmd/tree2scaffold/main.go",
-		"pkg/parser/parser.go",
-		"pkg/parser/parser_test.go",
-		"pkg/scaffold/scaffold.go",
-		"pkg/scaffold/scaffold_test.go",
-		"go.mod",
-		"go.sum",
-		"README.md",
-		".gitignore",
-	}
+   expected := []string{
+       "cmd/tree2scaffold/main.go",
+       "pkg/parser/parser.go",
+       "pkg/parser/parser_test.go",
+       "pkg/scaffold/scaffold.go",
+       "pkg/scaffold/scaffold_test.go",
+       "go.mod",
+       "go.sum",
+       "README.md",
+       "scripts/helper.py",
+       ".gitignore",
+   }
 
 	for _, rel := range expected {
 		fullPath := filepath.Join(rootDir, rel)
@@ -87,7 +90,7 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 		{"pkg/scaffold/scaffold.go", "package scaffold"},
 		{"pkg/scaffold/scaffold_test.go", "package scaffold"},
 	}
-	for _, pc := range pkgChecks {
+   for _, pc := range pkgChecks {
 		fullPath := filepath.Join(rootDir, pc.path)
 		data, err := os.ReadFile(fullPath)
 		if err != nil {
@@ -99,4 +102,19 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 			t.Errorf("%s: missing %q in file contents", pc.path, pc.wantPkg)
 		}
 	}
+   // Verify non-Go files (e.g., Python) have only comment headers and no package declarations
+   pyPath := "scripts/helper.py"
+   fullPy := filepath.Join(rootDir, pyPath)
+   data, err := os.ReadFile(fullPy)
+   if err != nil {
+       t.Errorf("failed to read %s: %v", pyPath, err)
+   } else {
+       content := string(data)
+       if !strings.Contains(content, "# python helper") {
+           t.Errorf("%s: missing Python comment header: %s", pyPath, content)
+       }
+       if strings.Contains(content, "package ") {
+           t.Errorf("%s: unexpected package declaration: %s", pyPath, content)
+       }
+   }
 }
