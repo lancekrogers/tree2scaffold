@@ -124,4 +124,37 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
            t.Errorf("%s: unexpected package declaration: %s", pyPath, content)
        }
    }
+   
+   // Verify go.mod file has the expected content
+   goModPath := "go.mod"
+   fullGoMod := filepath.Join(rootDir, goModPath)
+   goModData, err := os.ReadFile(fullGoMod)
+   if err != nil {
+       t.Errorf("failed to read %s: %v", goModPath, err)
+   } else {
+       content := string(goModData)
+       t.Logf("Content of %s:\n%s", goModPath, content)
+       
+       if !strings.Contains(content, "module ") {
+           t.Errorf("%s: missing module declaration: %s", goModPath, content)
+       }
+       if !strings.Contains(content, "go ") {
+           t.Errorf("%s: missing Go version: %s", goModPath, content)
+       }
+   }
+   
+   // Verify go.sum file has the expected content
+   goSumPath := "go.sum"
+   fullGoSum := filepath.Join(rootDir, goSumPath)
+   goSumData, err := os.ReadFile(fullGoSum)
+   if err != nil {
+       t.Errorf("failed to read %s: %v", goSumPath, err)
+   } else {
+       content := string(goSumData)
+       t.Logf("Content of %s:\n%s", goSumPath, content)
+       
+       if !strings.Contains(content, "automatically populated") {
+           t.Errorf("%s: missing placeholder text: %s", goSumPath, content)
+       }
+   }
 }

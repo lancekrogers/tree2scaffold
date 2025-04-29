@@ -44,12 +44,19 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 			return err
 		}
 
-		// Choose generator based solely on file extension
+		// Choose generator based on file name or extension
 		var content string
+		fileName := filepath.Base(n.Path)
 		ext := filepath.Ext(n.Path)
-		if generator, ok := generators[ext]; ok {
+		
+		// First check if we have a specific generator for this filename
+		if generator, ok := generators[fileName]; ok {
+			content = generator(n.Path, comment)
+		} else if generator, ok := generators[ext]; ok {
+			// Then try extension-based generators
 			content = generator(n.Path, comment)
 		} else {
+			// Fall back to default generator
 			content = defaultGenerator(n.Path, comment)
 		}
 
