@@ -24,21 +24,22 @@ func Apply(root string, nodes []parser.Node) error {
 			continue
 		}
 
-		// find nearest ancestor comment
-		anc := ""
-		for i := len(stack) - 1; i >= 0; i-- {
-			if stack[i].Comment != "" {
-				anc = stack[i].Comment
-				break
+		// use file-level comment if present, otherwise fallback to nearest ancestor
+		comment := n.Comment
+		if comment == "" {
+			for i := len(stack) - 1; i >= 0; i-- {
+				if stack[i].Comment != "" {
+					comment = stack[i].Comment
+					break
+				}
 			}
 		}
-
 		if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
 			return err
 		}
 
 		pkg := inferPkg(n.Path)
-		content := renderFile(pkg, filepath.Base(n.Path), anc)
+		content := renderFile(pkg, filepath.Base(n.Path), comment)
 		if err := os.WriteFile(full, []byte(content), 0644); err != nil {
 			return err
 		}
