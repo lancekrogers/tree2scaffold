@@ -1,18 +1,17 @@
 package scaffold
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/lancekrogers/tree2scaffold/pkg/parser"
 )
 
-// Apply creates dirs and files under root per the nodes, injecting comments and package names.
+// Apply walks nodes, creating directories and files under root.
 func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bool)) error {
 	var stack []parser.Node
+
 	for _, n := range nodes {
 		full := filepath.Join(root, n.Path)
 
@@ -21,13 +20,13 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 			if onCreate != nil {
 				onCreate(full, true)
 			}
-			if err := os.MkdirAll(full, 0755); err != nil {
+			if err := os.MkdirAll(full, 0o755); err != nil {
 				return err
 			}
 			continue
 		}
 
-		// file-level or ancestor comment
+		// Determine which comment to use
 		comment := n.Comment
 		if comment == "" {
 			for i := len(stack) - 1; i >= 0; i-- {
@@ -41,44 +40,33 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 		if onCreate != nil {
 			onCreate(full, false)
 		}
-		if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			return err
 		}
 
-		pkg := inferPkg(n.Path)
-		content := renderFile(pkg, filepath.Base(n.Path), comment)
-		if err := os.WriteFile(full, []byte(content), 0644); err != nil {
+		// Choose generator based solely on file extension
+		var content string
+		switch filepath.Ext(n.Path) {
+		case ".go":
+			content = generateGo(n.Path, comment)
+		default:
+			content = defaultGenerator(n.Path, comment)
+		}
+
+		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func inferPkg(rel string) string {
-	dir := filepath.Base(filepath.Dir(rel))
-	if strings.HasPrefix(rel, "cmd/") || dir == "" {
+// inferPkg derives the Go package name from relPath.
+// cmd/* → main; otherwise the parent folder name.
+func inferPkg(relPath string) string {
+	dir := filepath.Base(filepath.Dir(relPath))
+	if strings.HasPrefix(relPath, "cmd/") || dir == "" {
 		return "main"
 	}
 	return dir
-}
-
-func renderFile(pkg, file, comment string) string {
-	const tmpl = `{{if .Comment}}// {{.Comment}}
-
-{{end}}package {{.Pkg}}
-
-func main() {
-    // TODO: implement {{.File}}
-}
-`
-	t := template.Must(template.New("file").Parse(tmpl))
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, map[string]string{
-		"Pkg":     pkg,
-		"File":    file,
-		"Comment": comment,
-	}); err != nil {
-		panic(err)
-	}
-	return buf.String()
 }

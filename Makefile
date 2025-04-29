@@ -6,10 +6,10 @@ BINARY := tree2scaffold
 CMD := ./cmd/tree2scaffold
 GO := go
 
-.PHONY: all build install test fmt lint clean help
+.PHONY: all build install test integration fmt lint clean help
 
-# Default: run tests, then build
-all: test build
+# Default: run unit tests, integration test, then build
+all: test integration build
 
 # Build the CLI binary into ./bin/
 build:
@@ -20,9 +20,17 @@ build:
 install:
 	$(GO) install $(CMD)
 
-# Run all tests
+# Alternative: install directly via `go install`
+install-go:
+	$(GO) install $(MODULE)/cmd/tree2scaffold@latest
+
+# Run all unit tests
 test:
 	$(GO) test ./...
+
+# Run the integration test (end-to-end CLI behavior)
+integration:
+	$(GO) test -timeout 30s -v .
 
 # Format code (uses go fmt; change to goimports if you prefer)
 fmt:
@@ -39,10 +47,11 @@ clean:
 # Show available targets
 help:
 	@echo "Usage:"
-	@echo "  make          → runs tests, then builds"
+	@echo "  make          → run tests, integration, then build"
 	@echo "  make build    → compile binary to ./bin/$(BINARY)"
 	@echo "  make install  → go install $(MODULE)/cmd/$(BINARY)"
-	@echo "  make test     → run all tests"
+	@echo "  make test     → run all unit tests"
+	@echo "  make integration → run the end-to-end integration test"
 	@echo "  make fmt      → run go fmt ./..."
 	@echo "  make lint     → run golangci-lint"
 	@echo "  make clean    → remove ./bin"

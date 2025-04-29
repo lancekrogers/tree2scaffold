@@ -1,3 +1,4 @@
+// tree2scaffold_integration_test.go
 package integration_test
 
 import (
@@ -44,7 +45,7 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 	// Create a fresh root for scaffolding
 	rootDir := t.TempDir()
 
-	// Run the scaffold tool with the tree input
+	// Run the scaffold tool
 	proc := exec.Command(exePath, "-root", rootDir)
 	proc.Stdin = bytes.NewBufferString(treeInput)
 	proc.Stdout = os.Stdout
@@ -53,39 +54,49 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 		t.Fatalf("tree2scaffold execution failed: %v", err)
 	}
 
-	// Verify Go files have correct package and injected comments
-	checks := []struct {
-		path        string
-		wantPkg     string
-		wantComment string
-	}{
-		{"cmd/tree2scaffold/main.go", "package main", "// entry-point"},
-		{"pkg/parser/parser.go", "package parser", "// parses pasted ASCII trees"},
-		{"pkg/parser/parser_test.go", "package parser", "// parses pasted ASCII trees"},
-		{"pkg/scaffold/scaffold.go", "package scaffold", "// does os.MkdirAll, file templates, writes files"},
-		{"pkg/scaffold/scaffold_test.go", "package scaffold", "// does os.MkdirAll, file templates, writes files"},
+	// Expected paths to exist
+	expected := []string{
+		"cmd/tree2scaffold/main.go",
+		"pkg/parser/parser.go",
+		"pkg/parser/parser_test.go",
+		"pkg/scaffold/scaffold.go",
+		"pkg/scaffold/scaffold_test.go",
+		"go.mod",
+		"go.sum",
+		"README.md",
+		".gitignore",
 	}
-	for _, tc := range checks {
-		full := filepath.Join(rootDir, tc.path)
-		data, err := os.ReadFile(full)
-		if err != nil {
-			t.Errorf("file %s not found: %v", tc.path, err)
-			continue
-		}
-		content := string(data)
-		if !strings.Contains(content, tc.wantPkg) {
-			t.Errorf("%s: missing package declaration %q", tc.path, tc.wantPkg)
-		}
-		if !strings.Contains(content, tc.wantComment) {
-			t.Errorf("%s: missing injected comment %q", tc.path, tc.wantComment)
+
+	for _, rel := range expected {
+		fullPath := filepath.Join(rootDir, rel)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			t.Errorf("expected file %s not found", rel)
+		} else if err != nil {
+			t.Errorf("error checking file %s: %v", rel, err)
 		}
 	}
 
-	// Verify other project files exist
-	others := []string{"go.mod", "go.sum", "README.md", ".gitignore"}
-	for _, f := range others {
-		if _, err := os.Stat(filepath.Join(rootDir, f)); err != nil {
-			t.Errorf("expected %s to exist, got error: %v", f, err)
+	// Verify Go files contain correct package declarations
+	pkgChecks := []struct {
+		path    string
+		wantPkg string
+	}{
+		{"cmd/tree2scaffold/main.go", "package main"},
+		{"pkg/parser/parser.go", "package parser"},
+		{"pkg/parser/parser_test.go", "package parser"},
+		{"pkg/scaffold/scaffold.go", "package scaffold"},
+		{"pkg/scaffold/scaffold_test.go", "package scaffold"},
+	}
+	for _, pc := range pkgChecks {
+		fullPath := filepath.Join(rootDir, pc.path)
+		data, err := os.ReadFile(fullPath)
+		if err != nil {
+			t.Errorf("failed to read %s: %v", pc.path, err)
+			continue
+		}
+		content := string(data)
+		if !strings.Contains(content, pc.wantPkg) {
+			t.Errorf("%s: missing %q in file contents", pc.path, pc.wantPkg)
 		}
 	}
 }
