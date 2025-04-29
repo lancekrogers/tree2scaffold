@@ -46,7 +46,8 @@ func TestApply(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			root := t.TempDir()
-			if err := scaffold.Apply(root, tt.nodes); err != nil {
+			// note: pass nil for the onCreate callback
+			if err := scaffold.Apply(root, tt.nodes, nil); err != nil {
 				t.Fatalf("Apply() error = %v", err)
 			}
 

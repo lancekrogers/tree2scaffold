@@ -11,20 +11,23 @@ import (
 )
 
 // Apply creates dirs and files under root per the nodes, injecting comments and package names.
-func Apply(root string, nodes []parser.Node) error {
-	stack := []parser.Node{}
+func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bool)) error {
+	var stack []parser.Node
 	for _, n := range nodes {
 		full := filepath.Join(root, n.Path)
 
 		if n.IsDir {
 			stack = append(stack, n)
+			if onCreate != nil {
+				onCreate(full, true)
+			}
 			if err := os.MkdirAll(full, 0755); err != nil {
 				return err
 			}
 			continue
 		}
 
-		// use file-level comment if present, otherwise fallback to nearest ancestor
+		// file-level or ancestor comment
 		comment := n.Comment
 		if comment == "" {
 			for i := len(stack) - 1; i >= 0; i-- {
@@ -33,6 +36,10 @@ func Apply(root string, nodes []parser.Node) error {
 					break
 				}
 			}
+		}
+
+		if onCreate != nil {
+			onCreate(full, false)
 		}
 		if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
 			return err
