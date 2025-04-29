@@ -11,14 +11,21 @@ GO := go
 # Default: run unit tests, integration test, then build
 all: test integration build
 
-# Build the CLI binary into ./bin/
+# Where to install your binary
+PREFIX ?= /usr/local
+BINDIR := $(PREFIX)/bin
+
+.PHONY: build install
+
 build:
 	@mkdir -p bin
-	$(GO) build -o bin/$(BINARY) $(CMD)
+	go build -o bin/tree2scaffold ./cmd/tree2scaffold
 
-# Install into your $GOPATH/bin or $GOBIN
-install:
-	$(GO) install $(CMD)
+install: build
+	@echo "Installing tree2scaffold to $(BINDIR)"
+	@mkdir -p $(BINDIR)
+	@cp bin/tree2scaffold $(BINDIR)/tree2scaffold
+
 
 # Alternative: install directly via `go install`
 install-go:
