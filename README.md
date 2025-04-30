@@ -11,7 +11,7 @@ An open‑source CLI tool that converts an ASCII `tree`‑style project layout i
 - **Modular Generators**: File content is generated per‑extension:
   - **`.go`** files get a full stub with `package <name>` and a `func main()` scaffold.
   - All other extensions (e.g. `.py`, `.js`, `.md`, `.yaml`) get only a comment header, using the correct syntax for the filetype.
-  - Easily register new generators in `pkg/scaffold/generators.go` via `RegisterGenerator(ext, genFunc)`.
+  - Easily register new generators in the `init()` function in `pkg/scaffold/generators.go` via `RegisterGenerator(ext, genFunc)`.
 - **Preview & Confirm**: Use `-dry-run` to see exactly which dirs/files will be created, then confirm before making changes (or skip with `-yes`).
 - **Progress Output**: Visual feedback for every `mkdir` and file write with colored symbols.
 - **Cross‑Platform Design**: Written in Go, no external deps beyond standard Go and (optionally) `pbpaste` on macOS.
@@ -105,6 +105,8 @@ RegisterGenerator(".py", func(path, comment string) string {
   ```bash
   make integration
   ```
+  
+  This runs a comprehensive test that verifies the complete functionality by creating a scaffold from an example tree structure.
 
 ---
 
