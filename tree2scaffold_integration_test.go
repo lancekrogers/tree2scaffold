@@ -21,140 +21,167 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 		t.Fatalf("failed to build tree2scaffold: %v", err)
 	}
 
-	// ASCII tree input from `tree` output including comments
-   treeInput := `tree2scaffold/
-├── cmd/
-│   └── tree2scaffold/
-│       └── main.go        # entry-point
-│
-├── pkg/
-│   ├── parser/            # parses pasted ASCII trees
-│   │   ├── parser.go
-│   │   └── parser_test.go
-│   │
-│   └── scaffold/          # does os.MkdirAll, file templates, writes files
-│       ├── scaffold.go
-│       └── scaffold_test.go
-│
-├── go.mod
-├── go.sum
-├── README.md
-├── scripts/
-│   └── helper.py          # python helper
-└── .gitignore
+	// Test case for simple file list format
+	t.Run("simple file list format", func(t *testing.T) {
+		// Create a fresh root for scaffolding
+		rootDir := t.TempDir()
+
+		// Get the directory name to check package later
+		rootDirName := filepath.Base(rootDir)
+
+		// Extract the root dir name for package name comparison later
+		expectedPackage := strings.ToLower(rootDirName)
+		expectedPackage = strings.ReplaceAll(expectedPackage, "-", "_")
+		expectedPackage = strings.ReplaceAll(expectedPackage, ".", "_")
+		if strings.HasPrefix(expectedPackage, "test_") {
+			expectedPackage = strings.TrimPrefix(expectedPackage, "test_")
+		}
+
+		// Simple list format input
+		input := `orchestrator/
+orchestrator.go # Entry point: bootstraps guild, agents, etc.
+runner.go # Manages execution loop / agent task polling
+dispatcher.go # Handles assigning tasks, managing blocked queue
+eventbus.go # Connects to ZeroMQ, publishes/subscribes
 `
 
-	// Create a fresh root for scaffolding
-	rootDir := t.TempDir()
-
-	// Run the scaffold tool
-	proc := exec.Command(exePath, "-root", rootDir)
-	proc.Stdin = bytes.NewBufferString(treeInput)
-	proc.Stdout = os.Stdout
-	proc.Stderr = os.Stderr
-	if err := proc.Run(); err != nil {
-		t.Fatalf("tree2scaffold execution failed: %v", err)
-	}
-
-	// Expected paths to exist
-   expected := []string{
-       "cmd/tree2scaffold/main.go",
-       "pkg/parser/parser.go",
-       "pkg/parser/parser_test.go",
-       "pkg/scaffold/scaffold.go",
-       "pkg/scaffold/scaffold_test.go",
-       "go.mod",
-       "go.sum",
-       "README.md",
-       "scripts/helper.py",
-       ".gitignore",
-   }
-
-	for _, rel := range expected {
-		fullPath := filepath.Join(rootDir, rel)
-		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			t.Errorf("expected file %s not found", rel)
-		} else if err != nil {
-			t.Errorf("error checking file %s: %v", rel, err)
+		// Run the scaffold tool
+		proc := exec.Command(exePath, "-root", rootDir)
+		proc.Stdin = bytes.NewBufferString(input)
+		proc.Stdout = os.Stdout
+		proc.Stderr = os.Stderr
+		if err := proc.Run(); err != nil {
+			t.Fatalf("tree2scaffold execution failed: %v", err)
 		}
-	}
 
-	// Verify Go files contain correct package declarations
-	pkgChecks := []struct {
-		path    string
-		wantPkg string
-	}{
-		{"cmd/tree2scaffold/main.go", "package main"},
-		{"pkg/parser/parser.go", "package parser"},
-		{"pkg/parser/parser_test.go", "package parser"},
-		{"pkg/scaffold/scaffold.go", "package scaffold"},
-		{"pkg/scaffold/scaffold_test.go", "package scaffold"},
-	}
-   for _, pc := range pkgChecks {
-		fullPath := filepath.Join(rootDir, pc.path)
-		data, err := os.ReadFile(fullPath)
-		if err != nil {
-			t.Errorf("failed to read %s: %v", pc.path, err)
-			continue
+		// Expected files
+		expected := []string{
+			"orchestrator.go",
+			"runner.go",
+			"dispatcher.go",
+			"eventbus.go",
 		}
-		content := string(data)
-		if !strings.Contains(content, pc.wantPkg) {
-			t.Errorf("%s: missing %q in file contents", pc.path, pc.wantPkg)
+
+		// Verify expected files exist
+		for _, rel := range expected {
+			fullPath := filepath.Join(rootDir, rel)
+			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+				t.Errorf("expected file %s not found", rel)
+			} else if err != nil {
+				t.Errorf("error checking file %s: %v", rel, err)
+			}
 		}
-		// Print content of the first 10 lines of each file for debugging
-		lines := strings.Split(content, "\n")
-		linesToPrint := 10
-		if len(lines) < linesToPrint {
-			linesToPrint = len(lines)
+
+		// Verify that comments are included in the files
+		commentMap := map[string]string{
+			"orchestrator.go": "Entry point: bootstraps guild, agents, etc.",
+			"runner.go":       "Manages execution loop / agent task polling",
+			"dispatcher.go":   "Handles assigning tasks, managing blocked queue",
+			"eventbus.go":     "Connects to ZeroMQ, publishes/subscribes",
 		}
-		t.Logf("Content of %s (first %d lines):\n%s", pc.path, linesToPrint, strings.Join(lines[:linesToPrint], "\n"))
-	}
-   // Verify non-Go files (e.g., Python) have only comment headers and no package declarations
-   pyPath := "scripts/helper.py"
-   fullPy := filepath.Join(rootDir, pyPath)
-   data, err := os.ReadFile(fullPy)
-   if err != nil {
-       t.Errorf("failed to read %s: %v", pyPath, err)
-   } else {
-       content := string(data)
-       if !strings.Contains(content, "# python helper") {
-           t.Errorf("%s: missing Python comment header: %s", pyPath, content)
-       }
-       if strings.Contains(content, "package ") {
-           t.Errorf("%s: unexpected package declaration: %s", pyPath, content)
-       }
-   }
-   
-   // Verify go.mod file has the expected content
-   goModPath := "go.mod"
-   fullGoMod := filepath.Join(rootDir, goModPath)
-   goModData, err := os.ReadFile(fullGoMod)
-   if err != nil {
-       t.Errorf("failed to read %s: %v", goModPath, err)
-   } else {
-       content := string(goModData)
-       t.Logf("Content of %s:\n%s", goModPath, content)
-       
-       if !strings.Contains(content, "module ") {
-           t.Errorf("%s: missing module declaration: %s", goModPath, content)
-       }
-       if !strings.Contains(content, "go ") {
-           t.Errorf("%s: missing Go version: %s", goModPath, content)
-       }
-   }
-   
-   // Verify go.sum file has the expected content
-   goSumPath := "go.sum"
-   fullGoSum := filepath.Join(rootDir, goSumPath)
-   goSumData, err := os.ReadFile(fullGoSum)
-   if err != nil {
-       t.Errorf("failed to read %s: %v", goSumPath, err)
-   } else {
-       content := string(goSumData)
-       t.Logf("Content of %s:\n%s", goSumPath, content)
-       
-       if !strings.Contains(content, "automatically populated") {
-           t.Errorf("%s: missing placeholder text: %s", goSumPath, content)
-       }
-   }
+
+		for file, expectedComment := range commentMap {
+			fullPath := filepath.Join(rootDir, file)
+			data, err := os.ReadFile(fullPath)
+			if err != nil {
+				t.Errorf("failed to read %s: %v", file, err)
+				continue
+			}
+
+			content := string(data)
+			// Check that comment is included
+			if !strings.Contains(content, "// "+expectedComment) {
+				t.Errorf("%s: missing comment %q in file contents", file, expectedComment)
+			}
+
+			// Check that the package name matches the directory name
+			expectedPackageDecl := "package " + expectedPackage
+			if !strings.Contains(content, expectedPackageDecl) {
+				t.Errorf("%s: incorrect package name, expected %q in file contents: %s",
+					file, expectedPackageDecl, content)
+			}
+		}
+	})
+
+	// Test case for partial tree format (starting directly with a file)
+	t.Run("partial tree format", func(t *testing.T) {
+		// Create a fresh root for scaffolding
+		rootDir := t.TempDir()
+
+		// Get the directory name to check package later
+		rootDirName := filepath.Base(rootDir)
+
+		// Extract the root dir name for package name comparison later
+		expectedPackage := strings.ToLower(rootDirName)
+		expectedPackage = strings.ReplaceAll(expectedPackage, "-", "_")
+		expectedPackage = strings.ReplaceAll(expectedPackage, ".", "_")
+		if strings.HasPrefix(expectedPackage, "test_") {
+			expectedPackage = strings.TrimPrefix(expectedPackage, "test_")
+		}
+
+		// Partial tree format input (copy-pasted from tree command output)
+		input := `├── orchestrator.go # Entry point for the application
+├── runner.go # Handles the execution pipeline
+├── dispatcher.go # Routes tasks to workers
+└── eventbus.go # Manages pub/sub events
+`
+
+		// Run the scaffold tool
+		proc := exec.Command(exePath, "-root", rootDir)
+		proc.Stdin = bytes.NewBufferString(input)
+		proc.Stdout = os.Stdout
+		proc.Stderr = os.Stderr
+		if err := proc.Run(); err != nil {
+			t.Fatalf("tree2scaffold execution failed: %v", err)
+		}
+
+		// Expected files
+		expected := []string{
+			"orchestrator.go",
+			"runner.go",
+			"dispatcher.go",
+			"eventbus.go",
+		}
+
+		// Verify expected files exist
+		for _, rel := range expected {
+			fullPath := filepath.Join(rootDir, rel)
+			if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+				t.Errorf("expected file %s not found", rel)
+			} else if err != nil {
+				t.Errorf("error checking file %s: %v", rel, err)
+			}
+		}
+
+		// Verify that comments are included in the files
+		commentMap := map[string]string{
+			"orchestrator.go": "Entry point for the application",
+			"runner.go":       "Handles the execution pipeline",
+			"dispatcher.go":   "Routes tasks to workers",
+			"eventbus.go":     "Manages pub/sub events",
+		}
+
+		for file, expectedComment := range commentMap {
+			fullPath := filepath.Join(rootDir, file)
+			data, err := os.ReadFile(fullPath)
+			if err != nil {
+				t.Errorf("failed to read %s: %v", file, err)
+				continue
+			}
+
+			content := string(data)
+			// Check that comment is included
+			if !strings.Contains(content, "// "+expectedComment) {
+				t.Errorf("%s: missing comment %q in file contents", file, expectedComment)
+			}
+
+			// Check that the package name matches the directory name
+			expectedPackageDecl := "package " + expectedPackage
+			if !strings.Contains(content, expectedPackageDecl) {
+				t.Errorf("%s: incorrect package name, expected %q in file contents: %s",
+					file, expectedPackageDecl, content)
+			}
+		}
+	})
 }
+

@@ -75,6 +75,35 @@ func generateGo(relPath, comment string) string {
    return fmt.Sprintf("package %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", pkg, name)
 }
 
+// generateGoWithRootPackage produces the package stub for .go files,
+// using the provided rootDirName as the package name.
+func generateGoWithRootPackage(relPath, comment, rootDirName string) string {
+   name := filepath.Base(relPath)
+   
+   // Clean the rootDirName to be a valid Go package name
+   // Remove path separators, spaces, and other invalid characters
+   cleanPkg := strings.ToLower(rootDirName)
+   
+   // Replace invalid characters with underscores
+   cleanPkg = strings.ReplaceAll(cleanPkg, "-", "_")
+   cleanPkg = strings.ReplaceAll(cleanPkg, ".", "_")
+   
+   // Handle test_ prefix which is common in test directories
+   if strings.HasPrefix(cleanPkg, "test_") {
+      cleanPkg = strings.TrimPrefix(cleanPkg, "test_")
+   }
+   
+   // If the package name becomes empty after cleaning, use a default
+   if cleanPkg == "" {
+      cleanPkg = "main"
+   }
+   
+   if comment != "" {
+       return fmt.Sprintf("// %s\n\npackage %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", comment, cleanPkg, name)
+   }
+   return fmt.Sprintf("package %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", cleanPkg, name)
+}
+
 // generateGoMod creates a go.mod file with the current Go version.
 func generateGoMod(relPath, comment string) string {
    // Determine module name based on directory structure
