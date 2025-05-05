@@ -27,6 +27,8 @@ func main() {
 	root := flag.String("root", ".", "project root")
 	dryRun := flag.Bool("dry-run", false, "show what would be created and ask")
 	alwaysYes := flag.Bool("yes", false, "skip confirmation prompt")
+	debug := flag.Bool("debug", false, "output debug information")
+	forceOverwrite := flag.Bool("force", false, "force overwrite of existing files that conflict with directories")
 	flag.Parse()
 
 	// read from stdin or fallback to clipboard
@@ -42,22 +44,55 @@ func main() {
 		input = bytes.NewReader(out)
 	}
 
+	// Print raw input for debugging
+	if *debug {
+		inputBytes, _ := io.ReadAll(input)
+		fmt.Println("=== Input ===")
+		fmt.Println(string(inputBytes))
+		fmt.Println("=== End Input ===")
+		input = bytes.NewReader(inputBytes)
+	}
+
 	nodes, err := parser.Parse(input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "parse error:", err)
 		os.Exit(1)
 	}
+	
+	if *debug {
+		fmt.Println("=== Parsed Nodes ===")
+		for i, n := range nodes {
+			fmt.Printf("%d: Path=%s, IsDir=%v, Comment=%s\n", i, n.Path, n.IsDir, n.Comment)
+		}
+		fmt.Println("=== End Parsed Nodes ===")
+	}
 
 	// preview
-	if *dryRun {
-		fmt.Println("☑️  Will create:")
-		for _, n := range nodes {
-			if n.IsDir {
-				fmt.Printf("    dir:  %s\n", n.Path)
-			} else {
-				fmt.Printf("    file: %s\n", n.Path)
-			}
+	fmt.Println("☑️  Will create:")
+	for _, n := range nodes {
+		if n.IsDir {
+			fmt.Printf("    dir:  %s\n", n.Path)
+		} else {
+			fmt.Printf("    file: %s\n", n.Path)
 		}
+	}
+	// Set the global force mode
+	scaffold.ForceMode = *forceOverwrite
+	
+	// Pre-validate, especially for hidden files
+	if !*forceOverwrite {
+		if err := scaffold.Validate(*root, nodes); err != nil {
+			fmt.Fprintf(os.Stderr, "Validation error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Options:\n")
+			fmt.Fprintf(os.Stderr, "  1. Remove conflicting files manually before running again\n")
+			fmt.Fprintf(os.Stderr, "  2. Use the -force flag to overwrite conflicting files\n")
+			os.Exit(1)
+		}
+	} else if *debug {
+		fmt.Println("Note: Force mode enabled - will attempt to overwrite conflicting files")
+	}
+	
+	if *dryRun {
 		if !*alwaysYes && !askConfirm() {
 			fmt.Println("Aborted.")
 			return

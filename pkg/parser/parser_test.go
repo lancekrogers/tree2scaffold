@@ -126,22 +126,168 @@ func TestContainsTreeChar(t *testing.T) {
 	}
 }
 
-func TestCalcDepth(t *testing.T) {
+func TestPostProcessDirectories(t *testing.T) {
 	tests := []struct {
 		name  string
-		line  string
-		want  int
+		input []Node
+		want  []Node
 	}{
-		{"Plain text", "main.go", 0},
-		{"With spaces", "    main.go", 1},
+		{
+			name: "Common directory names are marked",
+			input: []Node{
+				{Path: "cmd", IsDir: false, Comment: ""},
+				{Path: "internal", IsDir: false, Comment: ""},
+				{Path: "file.go", IsDir: false, Comment: ""},
+			},
+			want: []Node{
+				{Path: "cmd/", IsDir: true, Comment: ""},
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "file.go", IsDir: false, Comment: ""},
+			},
+		},
+		{
+			name: "Parent paths are detected as directories",
+			input: []Node{
+				{Path: "internal", IsDir: false, Comment: ""},
+				{Path: "internal/ui", IsDir: false, Comment: ""},
+				{Path: "internal/ui/code.go", IsDir: false, Comment: ""},
+			},
+			want: []Node{
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/code.go", IsDir: false, Comment: ""},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := calcDepth(tt.line)
-			if got != tt.want {
-				t.Errorf("calcDepth() = %v, want %v", got, tt.want)
+			got := postProcessDirectories(tt.input)
+			
+			// Check that directories are correctly marked
+			for i, node := range got {
+				if i < len(tt.want) {
+					if node.IsDir != tt.want[i].IsDir {
+						t.Errorf("postProcessDirectories()[%d].IsDir = %v, want %v", 
+							i, node.IsDir, tt.want[i].IsDir)
+					}
+					if node.Path != tt.want[i].Path {
+						t.Errorf("postProcessDirectories()[%d].Path = %v, want %v", 
+							i, node.Path, tt.want[i].Path)
+					}
+				}
 			}
 		})
 	}
 }
+
+func TestFixNestedPaths(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []Node
+		want  []Node
+	}{
+		{
+			name: "UI test files are moved to UI directory",
+			input: []Node{
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/", IsDir: true, Comment: ""},
+				{Path: "internal/ui_test.go", IsDir: false, Comment: "Test file"},
+			},
+			want: []Node{
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/ui_test.go", IsDir: false, Comment: "Test file"},
+			},
+		},
+		{
+			name: "code.go is moved to UI directory",
+			input: []Node{
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/", IsDir: true, Comment: ""},
+				{Path: "internal/code.go", IsDir: false, Comment: "Code display"},
+			},
+			want: []Node{
+				{Path: "internal/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/", IsDir: true, Comment: ""},
+				{Path: "internal/ui/code.go", IsDir: false, Comment: "Code display"},
+			},
+		},
+		{
+			name: "test_problem.json is moved to testdata/problems",
+			input: []Node{
+				{Path: "testdata/", IsDir: true, Comment: ""},
+				{Path: "problems/", IsDir: true, Comment: ""},
+				{Path: "test_problem.json", IsDir: false, Comment: "Test data"},
+			},
+			want: []Node{
+				{Path: "testdata/", IsDir: true, Comment: ""},
+				{Path: "problems/", IsDir: true, Comment: ""},
+				{Path: "testdata/problems/test_problem.json", IsDir: false, Comment: "Test data"},
+			},
+		},
+		{
+			name: "build.yml is moved to .github/workflows",
+			input: []Node{
+				{Path: ".github/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/", IsDir: true, Comment: ""},
+				{Path: ".github/build.yml", IsDir: false, Comment: "GitHub Actions workflow"},
+			},
+			want: []Node{
+				{Path: ".github/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/build.yml", IsDir: false, Comment: "GitHub Actions workflow"},
+			},
+		},
+		{
+			name: "other GitHub workflow files are moved to workflows",
+			input: []Node{
+				{Path: ".github/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/", IsDir: true, Comment: ""},
+				{Path: ".github/ci.yml", IsDir: false, Comment: "CI pipeline"},
+				{Path: ".github/release.yml", IsDir: false, Comment: "Release config"},
+			},
+			want: []Node{
+				{Path: ".github/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/", IsDir: true, Comment: ""},
+				{Path: ".github/workflows/ci.yml", IsDir: false, Comment: "CI pipeline"},
+				{Path: ".github/workflows/release.yml", IsDir: false, Comment: "Release config"},
+			},
+		},
+		{
+			name: "VSCode settings files are moved to correct directories",
+			input: []Node{
+				{Path: ".vscode/", IsDir: true, Comment: ""},
+				{Path: ".vscode/tasks/", IsDir: true, Comment: ""},
+				{Path: ".vscode/settings/", IsDir: true, Comment: ""},
+				{Path: ".vscode/tasks.json", IsDir: false, Comment: "VSCode tasks"},
+				{Path: ".vscode/settings.json", IsDir: false, Comment: "VSCode settings"},
+			},
+			want: []Node{
+				{Path: ".vscode/", IsDir: true, Comment: ""},
+				{Path: ".vscode/tasks/", IsDir: true, Comment: ""},
+				{Path: ".vscode/settings/", IsDir: true, Comment: ""},
+				{Path: ".vscode/tasks/tasks.json", IsDir: false, Comment: "VSCode tasks"},
+				{Path: ".vscode/settings/settings.json", IsDir: false, Comment: "VSCode settings"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fixNestedPaths(tt.input)
+			
+			// Check that files are moved to correct locations
+			for i, node := range got {
+				if i < len(tt.want) {
+					if node.Path != tt.want[i].Path {
+						t.Errorf("fixNestedPaths()[%d].Path = %v, want %v", 
+							i, node.Path, tt.want[i].Path)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestCalcDepth removed because we've redesigned the parsing approach

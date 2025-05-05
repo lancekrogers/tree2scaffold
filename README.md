@@ -7,6 +7,10 @@ An open‑source CLI tool that converts an ASCII `tree`‑style project layout i
 ## Features
 
 - **ASCII‑to‑Scaffold**: Paste or pipe in a `tree` output and quickly generate the entire project structure.
+- **Multiple Input Formats**:
+  - Standard `tree` command output with ascii characters (├── and └──)
+  - Directory structure with indentation and trailing slashes
+  - Simple file list (one path per line)
 - **Clipboard Fallback**: If you invoke `tree2scaffold` with no piped input, it automatically reads from the macOS clipboard (`pbpaste`).
 - **Modular Generators**: File content is generated per‑extension:
   - **`.go`** files get a full stub with `package <name>` and a `func main()` scaffold.
@@ -65,6 +69,38 @@ tree2scaffold -yes
 - `-root <path>`: Directory under which to build the scaffold (defaults to `.`).
 - `-dry-run`: Show what would be created and prompt for confirmation, without writing.
 - `-yes`: Skip the confirmation prompt (useful for scripts).
+- `-debug`: Output additional debug information.
+
+### Input Format Examples
+
+You can use any of these formats:
+
+1. **Standard tree command output**:
+```
+myproject/
+├── cmd/
+│   └── app.go
+└── pkg/
+    └── utils.go
+```
+
+2. **Simple file list**:
+```
+cmd/
+cmd/app.go
+pkg/
+pkg/utils.go
+```
+
+3. **Alternative tree format** (with or without trailing slashes for directories):
+```
+myproject/
+├── cmd/
+├── internal/
+│   ├── api/
+│   └── db/
+└── pkg/
+```
 
 ---
 

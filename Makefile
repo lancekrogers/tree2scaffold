@@ -33,11 +33,11 @@ install-go:
 
 # Run all unit tests
 test:
-	$(GO) test ./...
+	$(GO) test -cover ./...
 
 # Run the integration test (end-to-end CLI behavior)
 integration:
-	$(GO) test -timeout 30s -v .
+	TEST_ALL=1 $(GO) test -timeout 30s -v ./test
 
 # Format code (uses go fmt; change to goimports if you prefer)
 fmt:
@@ -57,7 +57,7 @@ help:
 	@echo "  make          → run tests, integration, then build"
 	@echo "  make build    → compile binary to ./bin/$(BINARY)"
 	@echo "  make install  → go install $(MODULE)/cmd/$(BINARY)"
-	@echo "  make test     → run all unit tests"
+	@echo "  make test     → run all unit tests with coverage"
 	@echo "  make integration → run the end-to-end integration test"
 	@echo "  make fmt      → run go fmt ./..."
 	@echo "  make lint     → run golangci-lint"
