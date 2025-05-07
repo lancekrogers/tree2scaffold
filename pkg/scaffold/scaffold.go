@@ -1,16 +1,65 @@
+// Package scaffold provides functionality to convert parsed tree structures into actual file system artifacts.
 package scaffold
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/lancekrogers/tree2scaffold/pkg/parser"
 )
 
+// Scaffolder is the interface for creating file system structures from parsed tree nodes
+type Scaffolder interface {
+	// Validate checks if the scaffolding operation would succeed
+	Validate(root string, nodes []parser.Node) error
+	
+	// Apply creates the directory and file structure on disk
+	Apply(root string, nodes []parser.Node, callback CreationCallback) error
+	
+	// VerifyStructure checks if the created structure matches the specification
+	VerifyStructure(root string, nodes []parser.Node) error
+}
+
+// CreationCallback is called when a file or directory is created
+type CreationCallback func(path string, isDir bool)
+
+// ContentGenerator generates content for files
+type ContentGenerator interface {
+	// GenerateContent creates content for a file based on its path and comment
+	GenerateContent(relPath string, comment string) string
+	
+	// RegisterGenerator adds a new generator for a specific extension or filename
+	RegisterGenerator(extOrName string, generator FileGenerator)
+}
+
+// DefaultScaffolder implements the Scaffolder interface with default behavior
+type DefaultScaffolder struct {
+	ForceMode       bool
+	ContentProvider ContentGenerator
+}
+
+// NewScaffolder creates a new default scaffolder
+func NewScaffolder() *DefaultScaffolder {
+	return &DefaultScaffolder{
+		ForceMode:       false,
+		ContentProvider: NewDefaultContentGenerator(),
+	}
+}
+
+// NewScaffolderWithForce creates a new scaffolder with force mode enabled
+func NewScaffolderWithForce() *DefaultScaffolder {
+	return &DefaultScaffolder{
+		ForceMode:       true,
+		ContentProvider: NewDefaultContentGenerator(),
+	}
+}
+
+// ForceMode controls whether to overwrite existing files (backward compatibility)
+var ForceMode bool = false
+
 // Validate performs a dry-run check to see if the scaffold operation would succeed
-func Validate(root string, nodes []parser.Node) error {
+func (s *DefaultScaffolder) Validate(root string, nodes []parser.Node) error {
 	// First generate all directory paths that will need to be created
 	paths := make(map[string]bool) // path -> isDir
 	
@@ -47,14 +96,40 @@ func Validate(root string, nodes []parser.Node) error {
 	return nil
 }
 
-// ForceMode controls whether to overwrite existing files
-var ForceMode bool = false
+// VerifyStructure ensures the directory structure matches the specification after creation
+func (s *DefaultScaffolder) VerifyStructure(root string, nodes []parser.Node) error {
+	// Map of all expected paths
+	expectedPaths := make(map[string]bool)
+	
+	// Add all files and directories to expected paths
+	for _, n := range nodes {
+		expectedPaths[n.Path] = true
+	}
+	
+	// Use a file system walker to verify all expected paths exist
+	missingPaths := []string{}
+	
+	// Check each expected path
+	for path := range expectedPaths {
+		fullPath := filepath.Join(root, path)
+		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+			missingPaths = append(missingPaths, path)
+		}
+	}
+	
+	// If any paths are missing, report the error
+	if len(missingPaths) > 0 {
+		return fmt.Errorf("structure verification failed: missing %d paths including %v", 
+			len(missingPaths), missingPaths[:min(3, len(missingPaths))])
+	}
+	
+	return nil
+}
 
 // Apply walks nodes, creating directories and files under root.
-func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bool)) error {
+func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate CreationCallback) error {
 	var stack []parser.Node
-	// Get the base name of the root directory to use as package name for top-level files
-	rootDirName := filepath.Base(root)
+	// Process nodes in a structured way
 	
 	// Process nodes in two phases: first directories, then files
 	// First: Create a map to deduplicate paths and identify directories
@@ -92,7 +167,7 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 			if err == nil && !fileInfo.IsDir() {
 				// Path exists but is a file - remove it before creating directory
 				if err := os.Remove(dirPath); err != nil {
-					if ForceMode {
+					if s.ForceMode || ForceMode {
 						// In force mode, try more aggressively to remove the file
 						if removeErr := os.RemoveAll(dirPath); removeErr != nil {
 							return fmt.Errorf("cannot convert file to directory even in force mode: %s: %w", dirPath, removeErr)
@@ -155,6 +230,11 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 					onCreate(full, true)
 				}
 				continue
+			} else if !existingIsDir && !n.IsDir {
+				// It's a file and we want to create a file
+				// Skip - don't overwrite existing files
+				fmt.Fprintf(os.Stderr, "Note: Skipping existing file: %s\n", full)
+				continue
 			}
 		}
 
@@ -176,25 +256,17 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 			return err
 		}
 
-		// Choose generator based on file name or extension
+		// Generate content using the content provider
 		var content string
 		fileName := filepath.Base(n.Path)
-		ext := filepath.Ext(n.Path)
 		
-		// First check if we have a specific generator for this filename
-		if generator, ok := generators[fileName]; ok {
-			content = generator(n.Path, comment)
-		} else if generator, ok := generators[ext]; ok {
-			// Then try extension-based generators with the root directory name context
-			if ext == ".go" && filepath.Dir(n.Path) == "." {
-				// For top-level .go files, we'll pass the root directory name to be used
-				content = generateGoWithRootPackage(n.Path, comment, rootDirName)
-			} else {
-				content = generator(n.Path, comment)
-			}
+		// Check if file is main.go - special handling for main.go files
+		if fileName == "main.go" {
+			// main.go files always get package main
+			content = generateMainGoFile(n.Path, comment)
 		} else {
-			// Fall back to default generator
-			content = defaultGenerator(n.Path, comment)
+			// Generate content through the provider
+			content = s.ContentProvider.GenerateContent(n.Path, comment)
 		}
 
 		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
@@ -202,17 +274,35 @@ func Apply(root string, nodes []parser.Node, onCreate func(path string, isDir bo
 		}
 	}
 
-	return nil
+	// Optional: Verify the scaffolded structure matches the specification
+	return s.VerifyStructure(root, nodes)
 }
 
-// inferPkg derives the Go package name from relPath.
-// Files under cmd/ or at the project root get package main;
-// otherwise use the name of the parent directory.
-func inferPkg(relPath string) string {
-   dirPath := filepath.Dir(relPath)
-   // top-level files (Dir == ".") or cmd/* are main packages
-   if strings.HasPrefix(relPath, "cmd/") || dirPath == "." {
-       return "main"
-   }
-   return filepath.Base(dirPath)
+// generateMainGoFile generates content specifically for main.go files
+func generateMainGoFile(relPath, comment string) string {
+	if comment != "" {
+		return fmt.Sprintf("// %s\n\npackage main\n\nfunc main() {\n    // TODO: implement main.go\n}\n", comment)
+	}
+	return fmt.Sprintf("package main\n\nfunc main() {\n    // TODO: implement main.go\n}\n")
+}
+
+// Backward compatibility function to maintain the old API
+func Validate(root string, nodes []parser.Node) error {
+	s := NewScaffolder()
+	return s.Validate(root, nodes)
+}
+
+// Backward compatibility function to maintain the old API
+func Apply(root string, nodes []parser.Node, onCreate CreationCallback) error {
+	s := NewScaffolder()
+	s.ForceMode = ForceMode
+	return s.Apply(root, nodes, onCreate)
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

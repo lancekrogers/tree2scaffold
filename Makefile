@@ -25,11 +25,15 @@ install: build
 	@echo "Installing tree2scaffold to $(BINDIR)"
 	@mkdir -p $(BINDIR)
 	@cp bin/tree2scaffold $(BINDIR)/tree2scaffold
+	@echo "Creating t2s alias -> tree2scaffold"
+	@ln -sf $(BINDIR)/tree2scaffold $(BINDIR)/t2s
 
 
 # Alternative: install directly via `go install`
 install-go:
 	$(GO) install $(MODULE)/cmd/tree2scaffold@latest
+	@echo "Creating t2s alias -> tree2scaffold"
+	@ln -sf $(shell go env GOPATH)/bin/tree2scaffold $(shell go env GOPATH)/bin/t2s
 
 # Run all unit tests
 test:

@@ -1,4 +1,3 @@
-// tree2scaffold_integration_test.go
 package integration_test
 
 import (
@@ -242,7 +241,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 			}
 		}
 	})
-	
+
 	// Test case for complex nested tree with special directory handling
 	t.Run("complex nested tree", func(t *testing.T) {
 		// Create a fresh root for scaffolding
@@ -308,7 +307,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 				t.Errorf("expected %s to be a directory, but it's a file", rel)
 			}
 		}
-		
+
 		// Expected files with special handling
 		expectedFiles := []string{
 			"main.go",
@@ -328,7 +327,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 			"server/Dockerfile",
 			"testdata/problems/test_problem.json",
 		}
-		
+
 		// Verify expected files exist in the correct locations
 		for _, rel := range expectedFiles {
 			fullPath := filepath.Join(rootDir, rel)
@@ -341,12 +340,12 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 			}
 		}
 	})
-	
+
 	// Test case for force mode with hidden files
 	t.Run("force_mode_with_hidden_files", func(t *testing.T) {
 		// Create a fresh root for scaffolding
 		rootDir := t.TempDir()
-		
+
 		// Create a conflicting hidden file
 		if err := os.WriteFile(filepath.Join(rootDir, ".github"), []byte("test"), 0644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
@@ -385,7 +384,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 				t.Errorf("expected %s to be a directory, but it's a file", rel)
 			}
 		}
-		
+
 		// Verify that file was created
 		expectedFile := ".github/workflows/build.yml"
 		fullPath := filepath.Join(rootDir, expectedFile)
@@ -393,7 +392,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 			t.Errorf("expected file %s not found", expectedFile)
 		}
 	})
-	
+
 	// Test case for multiple hidden directory conventions
 	t.Run("multiple_hidden_directory_conventions", func(t *testing.T) {
 		// Create a fresh root for scaffolding
@@ -438,7 +437,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 				t.Errorf("expected %s to be a directory, but it's a file", rel)
 			}
 		}
-		
+
 		// Verify expected files exist in the correct locations
 		expectedFiles := []string{
 			".github/workflows/build.yml",
@@ -447,7 +446,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 			".vscode/tasks.json",
 			".vscode/settings.json",
 		}
-		
+
 		// Verify expected files exist
 		for _, rel := range expectedFiles {
 			fullPath := filepath.Join(rootDir, rel)
@@ -457,4 +456,3 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 		}
 	})
 }
-

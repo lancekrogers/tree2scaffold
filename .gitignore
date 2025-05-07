@@ -2,4 +2,5 @@ bin/*
 .env
 test-*/
 specs/*
+ai_docs/*
 **/.claude/settings.local.json
