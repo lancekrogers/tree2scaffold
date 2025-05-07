@@ -257,17 +257,8 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 		}
 
 		// Generate content using the content provider
-		var content string
-		fileName := filepath.Base(n.Path)
-		
-		// Check if file is main.go - special handling for main.go files
-		if fileName == "main.go" {
-			// main.go files always get package main
-			content = generateMainGoFile(n.Path, comment)
-		} else {
-			// Generate content through the provider
-			content = s.ContentProvider.GenerateContent(n.Path, comment)
-		}
+		// The provider already handles main.go files correctly
+		content := s.ContentProvider.GenerateContent(n.Path, comment)
 
 		if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
 			return err

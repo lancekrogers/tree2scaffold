@@ -192,8 +192,7 @@ func RegisterGenerator(ext string, gen FileGenerator) {
 }
 
 // inferPkg derives the Go package name from relPath.
-// Files under cmd/ or at the project root get package main;
-// otherwise use the name of the parent directory.
+// Files named main.go get package main; otherwise use the name of the parent directory.
 func inferPkg(relPath string) string {
    dirPath := filepath.Dir(relPath)
    fileName := filepath.Base(relPath)
@@ -203,11 +202,12 @@ func inferPkg(relPath string) string {
        return "main"
    }
    
-   // top-level files (Dir == ".") or cmd/* are main packages
-   if strings.HasPrefix(relPath, "cmd/") || dirPath == "." {
+   // top-level files (Dir == ".") get main package
+   if dirPath == "." {
        return "main"
    }
    
+   // Use the directory name as the package name
    return filepath.Base(dirPath)
 }
 
@@ -259,7 +259,10 @@ func inferModuleName(relPath string) string {
 }
 
 // These functions are deprecated but kept for backward compatibility
+// generateGo delegates to the DefaultContentGenerator.generateGo function
+// to ensure consistent package name inference logic
 func generateGo(relPath, comment string) string {
+	// Create a new DefaultContentGenerator to use our updated inferPkg function
 	gen := NewDefaultContentGenerator()
 	return gen.generateGo(relPath, comment)
 }
@@ -293,9 +296,16 @@ func generateGoWithRootPackage(relPath, comment, rootDirName string) string {
 
 // Legacy initialization for backward compatibility
 func init() {
+	// Clear any old registrations first
+	generators = make(map[string]FileGenerator)
+	
+	// Create a single content generator to ensure consistent behavior
+	gen := NewDefaultContentGenerator()
+	
 	// Register generators for different file types
-	RegisterGenerator(".go", generateGo)
-	RegisterGenerator("go.mod", NewDefaultContentGenerator().generateGoMod)
-	RegisterGenerator("go.work", NewDefaultContentGenerator().generateGoWork)
-	RegisterGenerator("go.sum", NewDefaultContentGenerator().generateGoSum)
+	// Using the DefaultContentGenerator directly to ensure consistent behavior
+	RegisterGenerator(".go", gen.generateGo)
+	RegisterGenerator("go.mod", gen.generateGoMod)
+	RegisterGenerator("go.work", gen.generateGoWork) 
+	RegisterGenerator("go.sum", gen.generateGoSum)
 }
