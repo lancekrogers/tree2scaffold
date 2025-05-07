@@ -55,8 +55,8 @@ func NewScaffolderWithForce() *DefaultScaffolder {
 	}
 }
 
-// ForceMode controls whether to overwrite existing files (backward compatibility)
-var ForceMode bool = false
+// ForceMode is no longer used - it's handled in the DefaultScaffolder struct
+// No global variable needed
 
 // Validate performs a dry-run check to see if the scaffold operation would succeed
 func (s *DefaultScaffolder) Validate(root string, nodes []parser.Node) error {
@@ -167,7 +167,7 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 			if err == nil && !fileInfo.IsDir() {
 				// Path exists but is a file - remove it before creating directory
 				if err := os.Remove(dirPath); err != nil {
-					if s.ForceMode || ForceMode {
+					if s.ForceMode {
 						// In force mode, try more aggressively to remove the file
 						if removeErr := os.RemoveAll(dirPath); removeErr != nil {
 							return fmt.Errorf("cannot convert file to directory even in force mode: %s: %w", dirPath, removeErr)
@@ -267,27 +267,6 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 
 	// Optional: Verify the scaffolded structure matches the specification
 	return s.VerifyStructure(root, nodes)
-}
-
-// generateMainGoFile generates content specifically for main.go files
-func generateMainGoFile(relPath, comment string) string {
-	if comment != "" {
-		return fmt.Sprintf("// %s\n\npackage main\n\nfunc main() {\n    // TODO: implement main.go\n}\n", comment)
-	}
-	return fmt.Sprintf("package main\n\nfunc main() {\n    // TODO: implement main.go\n}\n")
-}
-
-// Backward compatibility function to maintain the old API
-func Validate(root string, nodes []parser.Node) error {
-	s := NewScaffolder()
-	return s.Validate(root, nodes)
-}
-
-// Backward compatibility function to maintain the old API
-func Apply(root string, nodes []parser.Node, onCreate CreationCallback) error {
-	s := NewScaffolder()
-	s.ForceMode = ForceMode
-	return s.Apply(root, nodes, onCreate)
 }
 
 // min returns the minimum of two integers

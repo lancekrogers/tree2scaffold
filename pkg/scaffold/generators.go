@@ -183,14 +183,6 @@ func (g *DefaultContentGenerator) generateGoSum(relPath, comment string) string 
    return "// This file will be automatically populated when dependencies are added to go.mod\n"
 }
 
-// The legacy functions to maintain compatibility with existing code
-var generators = map[string]FileGenerator{}
-
-// RegisterGenerator associates an extension (e.g. ".go") with its generator.
-func RegisterGenerator(ext string, gen FileGenerator) {
-	generators[ext] = gen
-}
-
 // inferPkg derives the Go package name from relPath.
 // Files named main.go get package main; otherwise use the name of the parent directory.
 func inferPkg(relPath string) string {
@@ -256,56 +248,4 @@ func inferModuleName(relPath string) string {
    // For nested modules, use the directory structure
    // This is a simple implementation and might need to be customized
    return "example.com/" + dir
-}
-
-// These functions are deprecated but kept for backward compatibility
-// generateGo delegates to the DefaultContentGenerator.generateGo function
-// to ensure consistent package name inference logic
-func generateGo(relPath, comment string) string {
-	// Create a new DefaultContentGenerator to use our updated inferPkg function
-	gen := NewDefaultContentGenerator()
-	return gen.generateGo(relPath, comment)
-}
-
-func generateGoWithRootPackage(relPath, comment, rootDirName string) string {
-	name := filepath.Base(relPath)
-   
-	// Clean the rootDirName to be a valid Go package name
-	// Remove path separators, spaces, and other invalid characters
-	cleanPkg := strings.ToLower(rootDirName)
-   
-	// Replace invalid characters with underscores
-	cleanPkg = strings.ReplaceAll(cleanPkg, "-", "_")
-	cleanPkg = strings.ReplaceAll(cleanPkg, ".", "_")
-   
-	// Handle test_ prefix which is common in test directories
-	if strings.HasPrefix(cleanPkg, "test_") {
-		cleanPkg = strings.TrimPrefix(cleanPkg, "test_")
-	}
-   
-	// If the package name becomes empty after cleaning, use a default
-	if cleanPkg == "" {
-		cleanPkg = "main"
-	}
-   
-	if comment != "" {
-		return fmt.Sprintf("// %s\n\npackage %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", comment, cleanPkg, name)
-	}
-	return fmt.Sprintf("package %s\n\nfunc main() {\n    // TODO: implement %s\n}\n", cleanPkg, name)
-}
-
-// Legacy initialization for backward compatibility
-func init() {
-	// Clear any old registrations first
-	generators = make(map[string]FileGenerator)
-	
-	// Create a single content generator to ensure consistent behavior
-	gen := NewDefaultContentGenerator()
-	
-	// Register generators for different file types
-	// Using the DefaultContentGenerator directly to ensure consistent behavior
-	RegisterGenerator(".go", gen.generateGo)
-	RegisterGenerator("go.mod", gen.generateGoMod)
-	RegisterGenerator("go.work", gen.generateGoWork) 
-	RegisterGenerator("go.sum", gen.generateGoSum)
 }

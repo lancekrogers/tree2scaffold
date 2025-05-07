@@ -71,8 +71,9 @@ func TestValidate(t *testing.T) {
 				t.Fatalf("Setup failed: %v", err)
 			}
 
-			// Run validation
-			err := scaffold.Validate(testDir, tc.nodes)
+			// Create scaffolder and run validation
+			s := scaffold.NewScaffolder()
+			err := s.Validate(testDir, tc.nodes)
 
 			// Check if error is as expected
 			if tc.expectError {
@@ -124,8 +125,10 @@ func TestApply(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			root := t.TempDir()
-			// note: pass nil for the onCreate callback
-			if err := scaffold.Apply(root, tt.nodes, nil); err != nil {
+			// Create scaffolder instance
+			s := scaffold.NewScaffolder()
+			// Pass nil for the onCreate callback
+			if err := s.Apply(root, tt.nodes, nil); err != nil {
 				t.Fatalf("Apply() error = %v", err)
 			}
 
