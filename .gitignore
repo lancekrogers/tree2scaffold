@@ -1,5 +1,5 @@
 bin/*
 .env
 test-*/
-
+specs/*
 **/.claude/settings.local.json
