@@ -29,16 +29,8 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 		// Create a fresh root for scaffolding
 		rootDir := t.TempDir()
 
-		// Get the directory name to check package later
-		rootDirName := filepath.Base(rootDir)
-
-		// Extract the root dir name for package name comparison later
-		expectedPackage := strings.ToLower(rootDirName)
-		expectedPackage = strings.ReplaceAll(expectedPackage, "-", "_")
-		expectedPackage = strings.ReplaceAll(expectedPackage, ".", "_")
-		if strings.HasPrefix(expectedPackage, "test_") {
-			expectedPackage = strings.TrimPrefix(expectedPackage, "test_")
-		}
+		// With our updated code, top-level Go files should use package main
+		expectedPackage := "main"
 
 		// Simple list format input
 		input := `orchestrator/
@@ -97,7 +89,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 				t.Errorf("%s: missing comment %q in file contents", file, expectedComment)
 			}
 
-			// Check that the package name matches the directory name
+			// Check that the package name matches package main for top-level files
 			expectedPackageDecl := "package " + expectedPackage
 			if !strings.Contains(content, expectedPackageDecl) {
 				t.Errorf("%s: incorrect package name, expected %q in file contents: %s",
@@ -166,16 +158,8 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 		// Create a fresh root for scaffolding
 		rootDir := t.TempDir()
 
-		// Get the directory name to check package later
-		rootDirName := filepath.Base(rootDir)
-
-		// Extract the root dir name for package name comparison later
-		expectedPackage := strings.ToLower(rootDirName)
-		expectedPackage = strings.ReplaceAll(expectedPackage, "-", "_")
-		expectedPackage = strings.ReplaceAll(expectedPackage, ".", "_")
-		if strings.HasPrefix(expectedPackage, "test_") {
-			expectedPackage = strings.TrimPrefix(expectedPackage, "test_")
-		}
+		// With our updated code, top-level Go files should use package main
+		expectedPackage := "main"
 
 		// Partial tree format input (copy-pasted from tree command output)
 		input := `├── orchestrator.go # Entry point for the application
@@ -233,7 +217,7 @@ eventbus.go # Connects to ZeroMQ, publishes/subscribes
 				t.Errorf("%s: missing comment %q in file contents", file, expectedComment)
 			}
 
-			// Check that the package name matches the directory name
+			// Check that the package name matches package main for top-level files
 			expectedPackageDecl := "package " + expectedPackage
 			if !strings.Contains(content, expectedPackageDecl) {
 				t.Errorf("%s: incorrect package name, expected %q in file contents: %s",
