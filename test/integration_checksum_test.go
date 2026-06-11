@@ -18,7 +18,7 @@ import (
 // It also sorts the lines and removes the root directory entry.
 func normalize(raw string) string {
 	lines := strings.Split(raw, "\n")
-	
+
 	// Extract and remove the root project directory name from both inputs
 	var rootDir string
 	if len(lines) > 0 {
@@ -28,60 +28,60 @@ func normalize(raw string) string {
 			rootDir = strings.TrimSuffix(firstLine, "/")
 		}
 	}
-	
+
 	var out []string
 	for _, line := range lines {
 		// Drop tree output summary lines (like "5 directories, 10 files")
 		if strings.Contains(line, "directories") && strings.Contains(line, "files") {
 			continue
 		}
-		
+
 		// Drop empty lines
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		
+
 		// Drop the temporary directory path prefix that might appear
 		if strings.Contains(line, "var/folders") || strings.Contains(line, "tmp/") {
 			continue
 		}
-		
+
 		// Drop any ASCII tree characters and indentation
 		line = strings.ReplaceAll(line, "├──", "")
 		line = strings.ReplaceAll(line, "└──", "")
 		line = strings.ReplaceAll(line, "│", "")
-		
+
 		// drop comments
 		if i := strings.Index(line, "#"); i >= 0 {
 			line = line[:i]
 		}
-		
+
 		// Clean up the line
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		// drop trailing slash
 		line = strings.TrimSuffix(line, "/")
-		
+
 		// Skip lines that are likely not part of the tree output
 		if strings.HasPrefix(line, "====") {
 			continue
 		}
-		
+
 		// Skip the root directory name itself
 		if rootDir != "" && line == rootDir {
 			continue
 		}
-		
+
 		out = append(out, line)
 	}
-	
+
 	// Sort lines to ensure consistent ordering
 	// This helps with directory ordering differences between tree outputs
 	sort.Strings(out)
-	
+
 	return strings.Join(out, "\n")
 }
 
@@ -101,7 +101,7 @@ func verifyStructureChecksum(t *testing.T, asciiSpec string) {
 	if len(lines) > 0 && strings.TrimSpace(lines[0]) != "" {
 		rootDirName = strings.TrimSpace(strings.TrimSuffix(lines[0], "/"))
 	}
-	
+
 	// 1) Normalize and hash the ASCII spec
 	normalized := normalize(asciiSpec)
 	want := keccak256(normalized)
@@ -110,7 +110,7 @@ func verifyStructureChecksum(t *testing.T, asciiSpec string) {
 	tmp := t.TempDir()
 	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(asciiSpec)
-	
+
 	// Capture and store output for debugging
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -122,7 +122,7 @@ func verifyStructureChecksum(t *testing.T, asciiSpec string) {
 	if err != nil {
 		t.Fatalf("tree dump failed: %v\n%s", err, treeOut)
 	}
-	
+
 	// Add the root directory name to the dump for consistent comparison
 	dump := rootDirName + "\n" + strings.ReplaceAll(string(treeOut), tmp+string(os.PathSeparator), "")
 
@@ -135,17 +135,17 @@ func verifyStructureChecksum(t *testing.T, asciiSpec string) {
 		// Write spec and dumped structure to files for easier debugging
 		debugDir := filepath.Join(os.TempDir(), "tree2scaffold-test-debug")
 		os.MkdirAll(debugDir, 0755)
-		
+
 		specFile := filepath.Join(debugDir, "spec.txt")
 		dumpFile := filepath.Join(debugDir, "dump.txt")
 		normalizedSpecFile := filepath.Join(debugDir, "normalized-spec.txt")
 		normalizedDumpFile := filepath.Join(debugDir, "normalized-dump.txt")
-		
+
 		os.WriteFile(specFile, []byte(asciiSpec), 0644)
 		os.WriteFile(dumpFile, []byte(dump), 0644)
 		os.WriteFile(normalizedSpecFile, []byte(normalized), 0644)
 		os.WriteFile(normalizedDumpFile, []byte(normalizedDump), 0644)
-		
+
 		t.Errorf("Structure mismatch:\nwant (spec) checksum: %s\ngot (dump) checksum: %s\n\n"+
 			"Debug files written to:\n"+
 			"- Original spec: %s\n"+
@@ -170,14 +170,14 @@ func verifyGeneratedFilesNonFailing(t *testing.T, rootDir string) {
 		t.Logf("Failed to find Go files in %s: %v", rootDir, err)
 		return
 	}
-	
+
 	// Only check a few files as a sample
 	// This is to avoid failing tests unnecessarily as the structure checking is our primary concern
 	sampleSize := 3
 	if len(goFiles) > sampleSize {
 		goFiles = goFiles[:sampleSize]
 	}
-	
+
 	// Check that go.mod exists if it was in the spec
 	modFile := filepath.Join(rootDir, "go.mod")
 	if _, err := os.Stat(modFile); err == nil {
@@ -189,15 +189,15 @@ func verifyGeneratedFilesNonFailing(t *testing.T, rootDir string) {
 			}
 		}
 	}
-	
-	// Check sample Go files 
+
+	// Check sample Go files
 	for _, file := range goFiles {
 		content, err := os.ReadFile(file)
 		if err != nil {
 			t.Logf("Failed to read Go file %s: %v", file, err)
 			continue
 		}
-		
+
 		// Verify it contains a package declaration
 		if !strings.Contains(string(content), "package ") {
 			t.Logf("Go file %s is missing package declaration. Content:\n%s", file, string(content))
@@ -217,7 +217,7 @@ func verifyGeneratedFilesUnused(t *testing.T, rootDir string) {
 		t.Errorf("Failed to find Go files in %s: %v", rootDir, err)
 		return
 	}
-	
+
 	// Check that go.mod exists if it was in the spec
 	modFile := filepath.Join(rootDir, "go.mod")
 	if _, err := os.Stat(modFile); err == nil {
@@ -229,28 +229,28 @@ func verifyGeneratedFilesUnused(t *testing.T, rootDir string) {
 			}
 		}
 	}
-	
-	// Check all Go files 
+
+	// Check all Go files
 	for _, file := range goFiles {
 		content, err := os.ReadFile(file)
 		if err != nil {
 			t.Errorf("Failed to read Go file %s: %v", file, err)
 			continue
 		}
-		
+
 		// Verify it contains a package declaration
 		if !strings.Contains(string(content), "package ") {
 			t.Errorf("Go file %s is missing package declaration. Content:\n%s", file, string(content))
 			continue
 		}
-		
+
 		// Check main.go files for func main()
 		if strings.HasSuffix(file, "main.go") {
 			// main.go should have package main and func main()
 			if !strings.Contains(string(content), "package main") {
 				t.Errorf("main.go file %s doesn't have 'package main'. Content:\n%s", file, string(content))
 			}
-			
+
 			if !strings.Contains(string(content), "func main()") {
 				t.Errorf("main.go file %s doesn't have 'func main()'. Content:\n%s", file, string(content))
 			}
@@ -267,19 +267,19 @@ func verifyGeneratedFilesUnused(t *testing.T, rootDir string) {
 // findAllFiles recursively finds all files with the given extension
 func findAllFiles(root, ext string) ([]string, error) {
 	var files []string
-	
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if !info.IsDir() && strings.HasSuffix(path, ext) {
 			files = append(files, path)
 		}
-		
+
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -299,7 +299,7 @@ demo-app/
 	tmp := t.TempDir()
 	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(asciiSpec)
-	
+
 	// Capture and store output for debugging
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -314,18 +314,18 @@ demo-app/
 	// Based on the actual behavior of tree2scaffold, files are not created in as deep a structure
 	// as the ASCII tree might suggest. Let's check the files we actually expect to be created.
 	expectedPaths := []string{
-		"cmd/main.go",        // NOT cmd/demo-app/main.go
-		"pkg/util.go",        // NOT pkg/util/util.go
-		"README.md",          // This is at the root as expected
+		"cmd/main.go", // NOT cmd/demo-app/main.go
+		"pkg/util.go", // NOT pkg/util/util.go
+		"README.md",   // This is at the root as expected
 	}
-	
+
 	for _, path := range expectedPaths {
 		fullPath := filepath.Join(tmp, path)
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 			t.Errorf("Expected file %s does not exist", path)
 		}
 	}
-	
+
 	// Check content for main.go
 	mainGoPath := filepath.Join(tmp, "cmd/main.go")
 	content, err := os.ReadFile(mainGoPath)
@@ -335,13 +335,13 @@ demo-app/
 		mainGoContent := string(content)
 		// Just log the content - don't fail the test since package names vary
 		t.Logf("main.go content: \n%s", mainGoContent)
-		
+
 		// Check for the comment about it being an entry point
 		if !strings.Contains(mainGoContent, "entry point") {
 			t.Errorf("main.go missing comment 'entry point'")
 		}
 	}
-	
+
 	// Check util.go content
 	utilGoPath := filepath.Join(tmp, "pkg/util.go")
 	content, err = os.ReadFile(utilGoPath)
@@ -351,7 +351,7 @@ demo-app/
 		utilGoContent := string(content)
 		// Just log the content - don't fail the test since package names vary
 		t.Logf("util.go content: \n%s", utilGoContent)
-		
+
 		if !strings.Contains(utilGoContent, "helper functions") {
 			t.Errorf("util.go missing comment 'helper functions'")
 		}
@@ -447,7 +447,7 @@ codetool/
 	tmp := t.TempDir()
 	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(complexSpec)
-	
+
 	// Capture and store output for debugging
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -466,14 +466,14 @@ codetool/
 	} else {
 		t.Logf("README.md exists as expected")
 	}
-	
+
 	// Just check a few key files in the structure
 	keyPaths := []string{
 		"go.mod",
 		"go.sum",
 		"CONTRIBUTING.md",
 	}
-	
+
 	for _, path := range keyPaths {
 		fullPath := filepath.Join(tmp, path)
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -486,7 +486,7 @@ codetool/
 			}
 		}
 	}
-	
+
 	// 3) Check go.mod for module definition
 	goModPath := filepath.Join(tmp, "go.mod")
 	if content, err := os.ReadFile(goModPath); err == nil {
@@ -494,8 +494,8 @@ codetool/
 			t.Errorf("go.mod does not contain 'module' definition")
 		}
 	}
-	
-	// 4) Check that main.go has package main 
+
+	// 4) Check that main.go has package main
 	mainGoPath := filepath.Join(tmp, "main.go")
 	if content, err := os.ReadFile(mainGoPath); err == nil {
 		mainGoContent := string(content)
@@ -602,7 +602,7 @@ project/
 	tmp := t.TempDir()
 	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(hiddenDirsSpec)
-	
+
 	// Capture and store output for debugging
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -619,10 +619,10 @@ project/
 	expectedFiles := []string{
 		".env",
 		"src/main.go",
-		".github/build.yml",  // Note: Flattened from workflows/
+		".github/build.yml", // Note: Flattened from workflows/
 		".vscode/settings.json",
 	}
-	
+
 	for _, path := range expectedFiles {
 		fullPath := filepath.Join(tmp, path)
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
@@ -635,7 +635,7 @@ project/
 			}
 		}
 	}
-	
+
 	// 3) Check that the .github directory was created
 	githubDir := filepath.Join(tmp, ".github")
 	if info, err := os.Stat(githubDir); err == nil && info.IsDir() {
@@ -643,7 +643,7 @@ project/
 	} else {
 		t.Logf("Note: .github directory not created as expected")
 	}
-	
+
 	// 4) Check if src directory was created with main.go
 	srcDir := filepath.Join(tmp, "src")
 	if info, err := os.Stat(srcDir); err == nil && info.IsDir() {
@@ -707,7 +707,7 @@ crossplatform/
 	tmp := t.TempDir()
 	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(multiplatformSpec)
-	
+
 	// Capture and store output for debugging
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -721,16 +721,16 @@ crossplatform/
 
 	// 2) Check for some key files in the flattened structure
 	expectedFiles := []string{
-		"cmd/main.go",          // Flattened structure
-		"cmd/main_windows.go",  // Flattened structure
-		"cmd/main_linux.go",    // Flattened structure 
-		"cmd/main_darwin.go",   // Flattened structure
+		"cmd/main.go",         // Flattened structure
+		"cmd/main_windows.go", // Flattened structure
+		"cmd/main_linux.go",   // Flattened structure
+		"cmd/main_darwin.go",  // Flattened structure
 		"scripts/build.sh",
 		"scripts/build.bat",
 		"internal/platform.go", // Flattened structure
 		"README.md",
 	}
-	
+
 	filesFound := 0
 	for _, path := range expectedFiles {
 		fullPath := filepath.Join(tmp, path)
@@ -745,14 +745,14 @@ crossplatform/
 			}
 		}
 	}
-	
+
 	// As long as we found some files, the test is considered successful
 	if filesFound < 3 {
 		t.Errorf("Too few expected files found: %d", filesFound)
 	} else {
 		t.Logf("Found at least %d expected files", filesFound)
 	}
-	
+
 	// 3) Check README.md as it should definitely exist
 	readmePath := filepath.Join(tmp, "README.md")
 	if _, err := os.Stat(readmePath); os.IsNotExist(err) {

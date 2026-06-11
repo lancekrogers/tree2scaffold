@@ -44,7 +44,7 @@ func getInput() (io.Reader, error) {
 		// Data is being piped in
 		return os.Stdin, nil
 	}
-	
+
 	// No pipe, try to use pbpaste
 	out, err := exec.Command("pbpaste").Output()
 	if err != nil {
@@ -58,17 +58,17 @@ func preprocessInput(input io.Reader, debug bool) (io.Reader, error) {
 	if !debug {
 		return input, nil
 	}
-	
+
 	// For debug mode, print the raw input
 	inputBytes, err := io.ReadAll(input)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	fmt.Println("=== Input ===")
 	fmt.Println(string(inputBytes))
 	fmt.Println("=== End Input ===")
-	
+
 	return bytes.NewReader(inputBytes), nil
 }
 
@@ -96,25 +96,25 @@ func debugNodes(nodes []parser.Node) {
 // parseFlags parses command-line flags into an options structure
 func parseFlags() options {
 	opts := options{}
-	
+
 	// Define standard flags
 	flag.StringVar(&opts.root, "root", ".", "project root directory")
 	flag.BoolVar(&opts.dryRun, "dry-run", false, "show what would be created and ask")
 	flag.BoolVar(&opts.alwaysYes, "yes", false, "skip confirmation prompt")
 	flag.BoolVar(&opts.debug, "debug", false, "output debug information")
 	flag.BoolVar(&opts.forceOverwrite, "force", false, "force overwrite of existing files that conflict with directories")
-	
+
 	// Add a special shortcut flag for dry-run (abbreviated 'd')
 	dShortcut := flag.Bool("d", false, "shortcut for --dry-run")
-	
+
 	// Parse flags
 	flag.Parse()
-	
+
 	// Apply the shortcut if used
 	if *dShortcut {
 		opts.dryRun = true
 	}
-	
+
 	return opts
 }
 
@@ -125,27 +125,27 @@ func run(opts options) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Preprocess the input if needed
 	input, err = preprocessInput(input, opts.debug)
 	if err != nil {
 		return err
 	}
-	
+
 	// Parse the input into nodes
 	nodes, err := parser.Parse(input)
 	if err != nil {
 		return fmt.Errorf("parse error: %w", err)
 	}
-	
+
 	// Debug mode - print the parsed nodes
 	if opts.debug {
 		debugNodes(nodes)
 	}
-	
+
 	// Preview what will be created
 	previewNodes(nodes)
-	
+
 	// Create a scaffolder
 	var s scaffold.Scaffolder
 	if opts.forceOverwrite {
@@ -153,7 +153,7 @@ func run(opts options) error {
 	} else {
 		s = scaffold.NewScaffolder()
 	}
-	
+
 	// Pre-validate, especially for hidden files
 	if !opts.forceOverwrite {
 		if err := s.Validate(opts.root, nodes); err != nil {
@@ -166,7 +166,7 @@ func run(opts options) error {
 	} else if opts.debug {
 		fmt.Println("Note: Force mode enabled - will attempt to overwrite conflicting files")
 	}
-	
+
 	// Handle dry run mode
 	if opts.dryRun {
 		if !opts.alwaysYes && !askConfirm() {
@@ -174,7 +174,7 @@ func run(opts options) error {
 			return nil
 		}
 	}
-	
+
 	// Apply the scaffold and report progress
 	err = s.Apply(opts.root, nodes, func(path string, isDir bool) {
 		if isDir {
@@ -183,11 +183,11 @@ func run(opts options) error {
 			fmt.Printf("📝 write %s\n", path)
 		}
 	})
-	
+
 	if err != nil {
 		return fmt.Errorf("scaffold error: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -195,7 +195,7 @@ func run(opts options) error {
 func main() {
 	// Parse command-line flags
 	opts := parseFlags()
-	
+
 	// Run the application
 	err := run(opts)
 	if err != nil {
