@@ -116,6 +116,58 @@ myproject/
 
 ---
 
+## Running as WebAssembly (WASI)
+
+`tree2scaffold` can be compiled to a single, architecture-independent
+`GOOS=wasip1 GOARCH=wasm` module that runs under any WASI runtime
+(wasmtime, wasmer, wazero, Node's WASI) inside a sandbox.
+
+### Build
+
+```bash
+just build wasm        # -> bin/tree2scaffold.wasm  (opt-in; not part of `just build all`)
+# or, without just:
+GOOS=wasip1 GOARCH=wasm go build -trimpath -ldflags '-s -w' \
+  -o bin/tree2scaffold.wasm ./cmd/tree2scaffold
+```
+
+### Run
+
+The runtime must **preopen a writable directory mapped to the guest root `/`**
+and set **`PWD=/`** so paths resolve correctly. Pipe the tree on stdin and use
+`-yes` (the interactive confirm prompt is not used in a sandbox):
+
+```bash
+# Scaffold the current directory under wasmtime
+printf 'myproj/\n├── cmd/\n│   └── main.go\n└── go.mod\n' \
+  | wasmtime run --dir .::/ --env PWD=/ bin/tree2scaffold.wasm -- -root . -yes
+
+# Or simply:
+just build wasm-run
+```
+
+The module writes real files into the preopened directory on the host.
+
+### Embedding
+
+The same `.wasm` can be embedded in a Go host via
+[wazero](https://github.com/tetratelabs/wazero): mount a directory with
+`WithFSConfig(WithDirMount(dir, "/"))`, set `WithEnv("PWD", "/")`, and provide
+the tree through `WithStdin`.
+
+### Sandbox limitations
+
+Because WASI Preview 1 has no process model, the features that shell out are
+inert under WASI and fall back gracefully:
+
+- **Clipboard input is unavailable** — always pipe the tree via stdin.
+- **`go.mod` Go version** falls back to the built-in default (the host
+  `go version` cannot be probed).
+- **Module-name inference** falls back to a default (the `git` remote cannot be
+  probed).
+
+All path-based scaffolding, content generation, and stdin/stdout work normally.
+
 ## Customizing File Generators
 
 The tool uses an interface-based approach for content generation that makes it easy to extend:

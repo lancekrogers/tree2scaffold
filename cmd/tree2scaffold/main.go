@@ -4,13 +4,14 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
+	"github.com/lancekrogers/tree2scaffold/internal/env"
 	"github.com/lancekrogers/tree2scaffold/pkg/parser"
 	"github.com/lancekrogers/tree2scaffold/pkg/scaffold"
 )
@@ -35,18 +36,31 @@ func askConfirm() bool {
 	return resp == "y" || resp == "yes"
 }
 
-// getInput returns an io.Reader with the input to process
-// It either reads from stdin or falls back to clipboard
-func getInput() (io.Reader, error) {
-	// Check if stdin has data
-	fi, _ := os.Stdin.Stat()
-	if fi.Mode()&os.ModeCharDevice == 0 {
-		// Data is being piped in
+// getInput returns an io.Reader with the input to process. It prefers piped or
+// redirected stdin and otherwise falls back to the clipboard. Under WASI the
+// clipboard is unavailable and stdin pipe-detection is unreliable, so it reads
+// stdin directly and turns an empty stream into an actionable error.
+func getInput(e env.Environment) (io.Reader, error) {
+	// Honor piped/redirected stdin when it is detectable.
+	if fi, _ := os.Stdin.Stat(); fi.Mode()&os.ModeCharDevice == 0 {
 		return os.Stdin, nil
 	}
 
-	// No pipe, try to use pbpaste
-	out, err := exec.Command("pbpaste").Output()
+	// No obvious pipe: try the clipboard where the runtime supports it.
+	out, err := e.Clipboard()
+	if errors.Is(err, env.ErrUnsupported) {
+		// WASI: no clipboard, and char-device detection is unreliable, so read
+		// stdin directly. An empty stream becomes a clear, actionable error.
+		data, rerr := io.ReadAll(os.Stdin)
+		if rerr != nil {
+			return nil, fmt.Errorf("failed to read stdin: %w", rerr)
+		}
+		if len(data) == 0 {
+			return nil, fmt.Errorf("no input: pipe a tree via stdin, e.g. " +
+				"`cat tree.txt | wasmtime run --dir .::/ --env PWD=/ tree2scaffold.wasm`")
+		}
+		return bytes.NewReader(data), nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read clipboard: %w", err)
 	}
@@ -120,8 +134,11 @@ func parseFlags() options {
 
 // run executes the main program logic
 func run(opts options) error {
+	// Build the host environment once (exec-backed natively, no-op probes on WASI).
+	e := env.New()
+
 	// Get the input
-	input, err := getInput()
+	input, err := getInput(e)
 	if err != nil {
 		return err
 	}

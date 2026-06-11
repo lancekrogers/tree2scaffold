@@ -1,0 +1,64 @@
+name: wasm
+
+on:
+  push:
+    branches: [wasm]
+    tags: ["v*"]
+  pull_request:
+    branches: [wasm, main]
+
+permissions:
+  contents: write # release-asset upload on tags
+
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Install wasmtime
+        uses: bytecodealliance/actions/wasmtime/setup@v1
+
+      - name: Portability gate + build
+        run: |
+          just build wasm-vet
+          just build wasm
+
+      - name: Smoke test (scaffold under wasmtime)
+        run: |
+          mkdir -p smoke
+          printf 'demo/\n├── cmd/\n│   └── main.go\n└── go.mod\n' \
+            | wasmtime run --dir smoke::/ --env PWD=/ bin/tree2scaffold.wasm -- -root . -yes
+          test -f smoke/cmd/main.go
+          grep -q '^module ' smoke/go.mod
+          grep -q '^go ' smoke/go.mod
+
+      - name: WASI integration test
+        run: just test wasm
+
+      - name: Checksum
+        run: just build wasm-release
+
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree2scaffold-wasm
+          path: |
+            bin/tree2scaffold.wasm
+            bin/tree2scaffold.wasm.sha256
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bin/tree2scaffold.wasm
+            bin/tree2scaffold.wasm.sha256

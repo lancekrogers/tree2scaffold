@@ -29,3 +29,8 @@ integration:
 [no-cd]
 coverage-html:
     go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html
+
+# Run the WASI integration test (skips if no runtime; T2S_WASM reuses a prebuilt module)
+[no-cd]
+wasm:
+    T2S_WASM="$PWD/bin/tree2scaffold.wasm" TEST_ALL=1 go test -timeout 120s -v -run WASM ./test
