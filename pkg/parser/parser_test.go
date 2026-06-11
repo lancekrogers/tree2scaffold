@@ -104,9 +104,9 @@ runner.go # Manages execution`,
 
 func TestContainsTreeChar(t *testing.T) {
 	tests := []struct {
-		name  string
-		line  string
-		want  bool
+		name string
+		line string
+		want bool
 	}{
 		{"Empty line", "", false},
 		{"Simple filename", "main.go", false},
@@ -163,16 +163,16 @@ func TestPostProcessDirectories(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := postProcessDirectories(tt.input)
-			
+
 			// Check that directories are correctly marked
 			for i, node := range got {
 				if i < len(tt.want) {
 					if node.IsDir != tt.want[i].IsDir {
-						t.Errorf("postProcessDirectories()[%d].IsDir = %v, want %v", 
+						t.Errorf("postProcessDirectories()[%d].IsDir = %v, want %v",
 							i, node.IsDir, tt.want[i].IsDir)
 					}
 					if node.Path != tt.want[i].Path {
-						t.Errorf("postProcessDirectories()[%d].Path = %v, want %v", 
+						t.Errorf("postProcessDirectories()[%d].Path = %v, want %v",
 							i, node.Path, tt.want[i].Path)
 					}
 				}
@@ -276,12 +276,12 @@ func TestFixNestedPaths(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := fixNestedPaths(tt.input)
-			
+
 			// Check that files are moved to correct locations
 			for i, node := range got {
 				if i < len(tt.want) {
 					if node.Path != tt.want[i].Path {
-						t.Errorf("fixNestedPaths()[%d].Path = %v, want %v", 
+						t.Errorf("fixNestedPaths()[%d].Path = %v, want %v",
 							i, node.Path, tt.want[i].Path)
 					}
 				}

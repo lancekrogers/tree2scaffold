@@ -13,10 +13,10 @@ import (
 type Scaffolder interface {
 	// Validate checks if the scaffolding operation would succeed
 	Validate(root string, nodes []parser.Node) error
-	
+
 	// Apply creates the directory and file structure on disk
 	Apply(root string, nodes []parser.Node, callback CreationCallback) error
-	
+
 	// VerifyStructure checks if the created structure matches the specification
 	VerifyStructure(root string, nodes []parser.Node) error
 }
@@ -28,7 +28,7 @@ type CreationCallback func(path string, isDir bool)
 type ContentGenerator interface {
 	// GenerateContent creates content for a file based on its path and comment
 	GenerateContent(relPath string, comment string) string
-	
+
 	// RegisterGenerator adds a new generator for a specific extension or filename
 	RegisterGenerator(extOrName string, generator FileGenerator)
 }
@@ -62,14 +62,14 @@ func NewScaffolderWithForce() *DefaultScaffolder {
 func (s *DefaultScaffolder) Validate(root string, nodes []parser.Node) error {
 	// First generate all directory paths that will need to be created
 	paths := make(map[string]bool) // path -> isDir
-	
+
 	// Mark all explicit directories
 	for _, n := range nodes {
 		if n.IsDir {
 			paths[n.Path] = true
 		}
 	}
-	
+
 	// Mark all parent directories of files
 	for _, n := range nodes {
 		if !n.IsDir {
@@ -81,18 +81,18 @@ func (s *DefaultScaffolder) Validate(root string, nodes []parser.Node) error {
 			}
 		}
 	}
-	
+
 	// Check for files that would need to be converted to directories
 	for dir := range paths {
 		dirPath := filepath.Join(root, dir)
-		
+
 		// Check if the path exists but is a file
 		fileInfo, err := os.Stat(dirPath)
 		if err == nil && !fileInfo.IsDir() {
 			return fmt.Errorf("cannot create directory %s: a file with the same name already exists", dirPath)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -100,15 +100,15 @@ func (s *DefaultScaffolder) Validate(root string, nodes []parser.Node) error {
 func (s *DefaultScaffolder) VerifyStructure(root string, nodes []parser.Node) error {
 	// Map of all expected paths
 	expectedPaths := make(map[string]bool)
-	
+
 	// Add all files and directories to expected paths
 	for _, n := range nodes {
 		expectedPaths[n.Path] = true
 	}
-	
+
 	// Use a file system walker to verify all expected paths exist
 	missingPaths := []string{}
-	
+
 	// Check each expected path
 	for path := range expectedPaths {
 		fullPath := filepath.Join(root, path)
@@ -116,13 +116,13 @@ func (s *DefaultScaffolder) VerifyStructure(root string, nodes []parser.Node) er
 			missingPaths = append(missingPaths, path)
 		}
 	}
-	
+
 	// If any paths are missing, report the error
 	if len(missingPaths) > 0 {
-		return fmt.Errorf("structure verification failed: missing %d paths including %v", 
+		return fmt.Errorf("structure verification failed: missing %d paths including %v",
 			len(missingPaths), missingPaths[:min(3, len(missingPaths))])
 	}
-	
+
 	return nil
 }
 
@@ -130,18 +130,18 @@ func (s *DefaultScaffolder) VerifyStructure(root string, nodes []parser.Node) er
 func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate CreationCallback) error {
 	var stack []parser.Node
 	// Process nodes in a structured way
-	
+
 	// Process nodes in two phases: first directories, then files
 	// First: Create a map to deduplicate paths and identify directories
 	paths := make(map[string]bool) // path -> isDir
-	
+
 	// Mark all explicit directories
 	for _, n := range nodes {
 		if n.IsDir {
 			paths[n.Path] = true
 		}
 	}
-	
+
 	// Mark all parent directories of files
 	for _, n := range nodes {
 		if !n.IsDir {
@@ -153,15 +153,15 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 			}
 		}
 	}
-	
+
 	// First create all directories
 	for dir, isDir := range paths {
 		if isDir {
 			dirPath := filepath.Join(root, dir)
-			
+
 			// Special handling for hidden directories which often exist as files first
 			isHidden := len(dir) > 0 && dir[0] == '.'
-			
+
 			// Check if path exists and is a file
 			fileInfo, err := os.Stat(dirPath)
 			if err == nil && !fileInfo.IsDir() {
@@ -187,27 +187,27 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 					}
 				}
 			}
-			
+
 			if onCreate != nil {
 				onCreate(dirPath, true)
 			}
-			
+
 			// Create the directory
 			if err := os.MkdirAll(dirPath, 0o755); err != nil {
 				return err
 			}
 		}
 	}
-	
+
 	// Now process file nodes
 	for _, n := range nodes {
 		if n.IsDir {
 			stack = append(stack, n)
 			continue
 		}
-		
+
 		full := filepath.Join(root, n.Path)
-		
+
 		// Check if the path exists and handle conflicts
 		fileInfo, err := os.Stat(full)
 		if err == nil {
