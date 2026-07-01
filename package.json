@@ -1,0 +1,37 @@
+{
+  "name": "tree2scaffold",
+  "version": "0.0.0-development",
+  "description": "Convert ASCII tree-style project layouts into real directory and file scaffolds.",
+  "license": "MIT",
+  "homepage": "https://github.com/lancekrogers/tree2scaffold#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lancekrogers/tree2scaffold.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lancekrogers/tree2scaffold/issues"
+  },
+  "keywords": [
+    "cli",
+    "scaffold",
+    "tree",
+    "project-generator",
+    "llm"
+  ],
+  "bin": {
+    "tree2scaffold": "npm/bin/tree2scaffold.js",
+    "t2s": "npm/bin/t2s.js"
+  },
+  "files": [
+    "npm/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "package:stage-native": "node npm/scripts/stage-native-binaries.js",
+    "package:check": "node npm/scripts/package-check.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
