@@ -1,0 +1,52 @@
+name: native release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write # release-asset upload on tags
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build native release assets
+        run: just build release-native
+
+      - name: Verify native release assets
+        run: just build release-native-verify
+
+      - name: Upload native artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree2scaffold-native-release
+          path: |
+            dist/release/*.tar.gz
+            dist/release/*.sha256
+
+      - name: Attach native assets to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/release/*.tar.gz
+            dist/release/*.sha256

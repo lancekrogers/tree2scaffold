@@ -16,6 +16,12 @@ import (
 	"github.com/lancekrogers/tree2scaffold/pkg/scaffold"
 )
 
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 // Command-line options
 type options struct {
 	root           string
@@ -23,6 +29,11 @@ type options struct {
 	alwaysYes      bool
 	debug          bool
 	forceOverwrite bool
+	showVersion    bool
+}
+
+func versionString() string {
+	return fmt.Sprintf("tree2scaffold %s (commit %s, built %s)", version, commit, date)
 }
 
 // askConfirm prompts the user for confirmation and returns their response
@@ -117,6 +128,7 @@ func parseFlags() options {
 	flag.BoolVar(&opts.alwaysYes, "yes", false, "skip confirmation prompt")
 	flag.BoolVar(&opts.debug, "debug", false, "output debug information")
 	flag.BoolVar(&opts.forceOverwrite, "force", false, "force overwrite of existing files that conflict with directories")
+	flag.BoolVar(&opts.showVersion, "version", false, "print version and exit")
 
 	// Add a special shortcut flag for dry-run (abbreviated 'd')
 	dShortcut := flag.Bool("d", false, "shortcut for --dry-run")
@@ -127,6 +139,9 @@ func parseFlags() options {
 	// Apply the shortcut if used
 	if *dShortcut {
 		opts.dryRun = true
+	}
+	if flag.NArg() > 0 && flag.Arg(0) == "version" {
+		opts.showVersion = true
 	}
 
 	return opts
@@ -212,6 +227,11 @@ func run(opts options) error {
 func main() {
 	// Parse command-line flags
 	opts := parseFlags()
+
+	if opts.showVersion {
+		fmt.Println(versionString())
+		return
+	}
 
 	// Run the application
 	err := run(opts)

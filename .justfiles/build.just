@@ -75,3 +75,13 @@ wasm-run: wasm
 [no-cd]
 wasm-release: wasm
     cd {{bin_dir}} && shasum -a 256 {{binary_name}}.wasm > {{binary_name}}.wasm.sha256
+
+# Build native release archives and SHA-256 checksums
+[no-cd]
+release-native:
+    ./scripts/build-release-assets.sh
+
+# Verify native release archives and checksums
+[no-cd]
+release-native-verify:
+    ./scripts/verify-release-assets.sh
