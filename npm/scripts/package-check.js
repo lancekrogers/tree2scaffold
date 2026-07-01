@@ -9,6 +9,7 @@ const { nativeBinaryPath } = require("../lib/run-tree2scaffold");
 
 const root = path.resolve(__dirname, "..", "..");
 const pkg = require(path.join(root, "package.json"));
+const nativeDir = path.join(root, "npm", "native");
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -60,6 +61,25 @@ function stageCurrentBinary() {
   ]);
   fs.chmodSync(binary, 0o755);
   return binary;
+}
+
+function backupNativeDir() {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "tree2scaffold-native-backup-"));
+  const backup = path.join(tempRoot, "native");
+  if (fs.existsSync(nativeDir)) {
+    fs.cpSync(nativeDir, backup, { recursive: true });
+    return { tempRoot, backup, hadNative: true };
+  }
+  return { tempRoot, backup, hadNative: false };
+}
+
+function restoreNativeDir(snapshot) {
+  fs.rmSync(nativeDir, { recursive: true, force: true });
+  if (snapshot.hadNative) {
+    fs.mkdirSync(path.dirname(nativeDir), { recursive: true });
+    fs.cpSync(snapshot.backup, nativeDir, { recursive: true });
+  }
+  fs.rmSync(snapshot.tempRoot, { recursive: true, force: true });
 }
 
 function assertWrapperSmoke() {
@@ -129,13 +149,14 @@ function assertPackContents() {
 }
 
 assertPackageShape();
+const nativeSnapshot = backupNativeDir();
 stageCurrentBinary();
 try {
   assertWrapperSmoke();
   assertUnsupportedPlatform();
   assertPackContents();
 } finally {
-  fs.rmSync(path.join(root, "npm", "native"), { recursive: true, force: true });
+  restoreNativeDir(nativeSnapshot);
 }
 
 console.log("npm package validation passed");

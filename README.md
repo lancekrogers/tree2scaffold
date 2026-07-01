@@ -100,8 +100,10 @@ make install PREFIX="$HOME/.local"
 ### Via Go Modules
 
 ```bash
-# This installs both tree2scaffold and the t2s alias
-go install github.com/lancekrogers/tree2scaffold/cmd/tree2scaffold@latest
+# Install from source with the t2s alias
+make install-go
+# or
+just install go
 ```
 
 Ensure `$GOPATH/bin` (or `$GOBIN`) is in your `PATH`.
