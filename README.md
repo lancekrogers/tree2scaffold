@@ -28,7 +28,62 @@ An open‑source CLI tool that converts an ASCII `tree`‑style project layout i
 
 ## Installation
 
-### Quick Install (recommended)
+### npm
+
+The npm package installs prebuilt binaries and exposes both `tree2scaffold` and
+`t2s`. These commands apply after the package has been published by the
+maintainer.
+
+```bash
+npm install -g tree2scaffold
+tree2scaffold --version
+t2s --version
+```
+
+Upgrade or uninstall with:
+
+```bash
+npm update -g tree2scaffold
+npm uninstall -g tree2scaffold
+```
+
+### Homebrew Formula (recommended for Homebrew)
+
+For Homebrew users, the formula is the recommended CLI-native installation
+path. These commands apply after the tap has been published by the maintainer.
+
+```bash
+brew install lancekrogers/tap/tree2scaffold
+tree2scaffold --version
+t2s --version
+```
+
+Upgrade or uninstall with:
+
+```bash
+brew upgrade tree2scaffold
+brew uninstall tree2scaffold
+```
+
+### Homebrew Cask
+
+A cask template is also maintained for users who specifically need cask-based
+distribution.
+
+```bash
+brew install --cask lancekrogers/tap/tree2scaffold
+tree2scaffold --version
+t2s --version
+```
+
+Upgrade or uninstall with:
+
+```bash
+brew upgrade --cask tree2scaffold
+brew uninstall --cask tree2scaffold
+```
+
+### From Source
 
 ```bash
 # Build and copy the binary into /usr/local/bin
