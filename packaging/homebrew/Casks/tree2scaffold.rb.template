@@ -1,0 +1,16 @@
+cask "tree2scaffold" do
+  arch arm: "arm64", intel: "amd64"
+
+  version "{{VERSION}}"
+  sha256 arm:   "{{SHA256_DARWIN_ARM64}}",
+         intel: "{{SHA256_DARWIN_AMD64}}"
+
+  url "https://github.com/lancekrogers/tree2scaffold/releases/download/{{TAG}}/tree2scaffold_{{TAG}}_darwin_#{arch}.tar.gz"
+  name "tree2scaffold"
+  desc "Convert ASCII tree-style project layouts into file scaffolds"
+  homepage "https://github.com/lancekrogers/tree2scaffold"
+
+  binary "tree2scaffold"
+  # Functional alias for the short command documented by the project.
+  binary "tree2scaffold", target: "t2s"
+end

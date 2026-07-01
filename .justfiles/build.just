@@ -85,3 +85,8 @@ release-native:
 [no-cd]
 release-native-verify:
     ./scripts/verify-release-assets.sh
+
+# Render and validate Homebrew cask/formula files from release assets
+[no-cd]
+homebrew-render: release-native
+    ./scripts/render-homebrew.sh

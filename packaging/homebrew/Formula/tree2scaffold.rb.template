@@ -1,0 +1,27 @@
+class Tree2scaffold < Formula
+  desc "Convert ASCII tree-style project layouts into file scaffolds"
+  homepage "https://github.com/lancekrogers/tree2scaffold"
+  version "{{VERSION}}"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/lancekrogers/tree2scaffold/releases/download/{{TAG}}/tree2scaffold_{{TAG}}_darwin_arm64.tar.gz"
+      sha256 "{{SHA256_DARWIN_ARM64}}"
+    else
+      url "https://github.com/lancekrogers/tree2scaffold/releases/download/{{TAG}}/tree2scaffold_{{TAG}}_darwin_amd64.tar.gz"
+      sha256 "{{SHA256_DARWIN_AMD64}}"
+    end
+  end
+
+  def install
+    bin.install "tree2scaffold"
+    bin.install_symlink bin/"tree2scaffold" => "t2s"
+  end
+
+  test do
+    pipe_output "#{bin}/tree2scaffold -root #{testpath} -yes", "demo/\n└── README.md\n", 0
+    assert_path_exists testpath/"README.md"
+    assert_match version.to_s, shell_output("#{bin}/tree2scaffold --version")
+  end
+end
