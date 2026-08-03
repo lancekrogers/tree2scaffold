@@ -108,7 +108,7 @@ func verifyStructureChecksum(t *testing.T, asciiSpec string) {
 
 	// 2) Scaffold into a temp dir
 	tmp := t.TempDir()
-	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
+	cmd := exec.Command(scaffoldBin, "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(asciiSpec)
 
 	// Capture and store output for debugging
@@ -297,7 +297,7 @@ demo-app/
 `
 	// 1) Scaffold into a temp dir
 	tmp := t.TempDir()
-	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
+	cmd := exec.Command(scaffoldBin, "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(asciiSpec)
 
 	// Capture and store output for debugging
@@ -445,7 +445,7 @@ codetool/
 `
 	// 1) Scaffold into a temp dir
 	tmp := t.TempDir()
-	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
+	cmd := exec.Command(scaffoldBin, "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(complexSpec)
 
 	// Capture and store output for debugging
@@ -600,7 +600,7 @@ project/
 `
 	// 1) Scaffold into a temp dir
 	tmp := t.TempDir()
-	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
+	cmd := exec.Command(scaffoldBin, "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(hiddenDirsSpec)
 
 	// Capture and store output for debugging
@@ -705,7 +705,7 @@ crossplatform/
 `
 	// 1) Scaffold into a temp dir
 	tmp := t.TempDir()
-	cmd := exec.Command("tree2scaffold", "-root", tmp, "-yes") // Use -yes to skip confirmation
+	cmd := exec.Command(scaffoldBin, "-root", tmp, "-yes") // Use -yes to skip confirmation
 	cmd.Stdin = strings.NewReader(multiplatformSpec)
 
 	// Capture and store output for debugging
