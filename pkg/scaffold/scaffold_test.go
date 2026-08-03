@@ -146,3 +146,40 @@ func TestApply(t *testing.T) {
 		})
 	}
 }
+
+// TestApplyCreatesParentsBeforeChildren guards an ordering bug: the directory
+// set is a map, so its iteration order is randomised on every run. When a
+// nested directory was created before its own parent, and that parent still
+// existed as a file awaiting force conversion, MkdirAll failed outright with
+// "not a directory".
+//
+// One pass would catch it only about half the time, so this repeats enough
+// that the pre-fix ordering could not survive by luck.
+func TestApplyCreatesParentsBeforeChildren(t *testing.T) {
+	nodes := []parser.Node{
+		{Path: ".github/", IsDir: true},
+		{Path: ".github/workflows/", IsDir: true},
+		{Path: ".github/workflows/build.yml", IsDir: false},
+	}
+
+	for i := 0; i < 50; i++ {
+		root := t.TempDir()
+
+		// The parent exists as a file, which force mode must convert.
+		if err := os.WriteFile(filepath.Join(root, ".github"), []byte("stale"), 0o644); err != nil {
+			t.Fatalf("seed conflicting file: %v", err)
+		}
+
+		if err := scaffold.NewScaffolderWithForce().Apply(root, nodes, nil); err != nil {
+			t.Fatalf("iteration %d: Apply() error = %v", i, err)
+		}
+
+		info, err := os.Stat(filepath.Join(root, ".github", "workflows"))
+		if err != nil {
+			t.Fatalf("iteration %d: nested dir missing: %v", i, err)
+		}
+		if !info.IsDir() {
+			t.Fatalf("iteration %d: .github/workflows is not a directory", i)
+		}
+	}
+}
