@@ -14,15 +14,7 @@ func TestTree2ScaffoldIntegration(t *testing.T) {
 	if os.Getenv("CI") == "" && os.Getenv("TEST_ALL") == "" {
 		t.Skip("Skipping integration test in non-CI environment. Set TEST_ALL=1 to run all tests.")
 	}
-	// Build the CLI binary
-	buildDir := t.TempDir()
-	exePath := filepath.Join(buildDir, "tree2scaffold")
-	buildCmd := exec.Command("go", "build", "-o", exePath, "../cmd/tree2scaffold")
-	buildCmd.Stdout = os.Stdout
-	buildCmd.Stderr = os.Stderr
-	if err := buildCmd.Run(); err != nil {
-		t.Fatalf("failed to build tree2scaffold: %v", err)
-	}
+	exePath := scaffoldBin
 
 	// Test case for simple file list format
 	t.Run("simple file list format", func(t *testing.T) {

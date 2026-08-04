@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/lancekrogers/tree2scaffold/pkg/parser"
 )
@@ -154,48 +155,56 @@ func (s *DefaultScaffolder) Apply(root string, nodes []parser.Node, onCreate Cre
 		}
 	}
 
-	// First create all directories
+	// Create directories shallowest-first. Map iteration order is randomised,
+	// and creating a child before its parent fails outright when that parent
+	// still exists as a file this pass has not converted yet.
+	dirs := make([]string, 0, len(paths))
 	for dir, isDir := range paths {
 		if isDir {
-			dirPath := filepath.Join(root, dir)
+			dirs = append(dirs, dir)
+		}
+	}
+	slices.Sort(dirs)
 
-			// Special handling for hidden directories which often exist as files first
-			isHidden := len(dir) > 0 && dir[0] == '.'
+	for _, dir := range dirs {
+		dirPath := filepath.Join(root, dir)
 
-			// Check if path exists and is a file
-			fileInfo, err := os.Stat(dirPath)
-			if err == nil && !fileInfo.IsDir() {
-				// Path exists but is a file - remove it before creating directory
-				if err := os.Remove(dirPath); err != nil {
-					if s.ForceMode {
-						// In force mode, try more aggressively to remove the file
-						if removeErr := os.RemoveAll(dirPath); removeErr != nil {
-							return fmt.Errorf("cannot convert file to directory even in force mode: %s: %w", dirPath, removeErr)
-						}
-						// For hidden directories, we log this as it's a common source of issues
-						if isHidden {
-							fmt.Fprintf(os.Stderr, "Note: Force converted file to directory: %s\n", dirPath)
-						}
-					} else {
-						return fmt.Errorf("cannot convert file to directory: %s: %w", dirPath, err)
+		// Special handling for hidden directories which often exist as files first
+		isHidden := len(dir) > 0 && dir[0] == '.'
+
+		// Check if path exists and is a file
+		fileInfo, err := os.Stat(dirPath)
+		if err == nil && !fileInfo.IsDir() {
+			// Path exists but is a file - remove it before creating directory
+			if err := os.Remove(dirPath); err != nil {
+				if s.ForceMode {
+					// In force mode, try more aggressively to remove the file
+					if removeErr := os.RemoveAll(dirPath); removeErr != nil {
+						return fmt.Errorf("cannot convert file to directory even in force mode: %s: %w", dirPath, removeErr)
 					}
-				} else {
-					// Successfully removed the file
 					// For hidden directories, we log this as it's a common source of issues
 					if isHidden {
-						fmt.Fprintf(os.Stderr, "Note: Converting file to directory: %s\n", dirPath)
+						fmt.Fprintf(os.Stderr, "Note: Force converted file to directory: %s\n", dirPath)
 					}
+				} else {
+					return fmt.Errorf("cannot convert file to directory: %s: %w", dirPath, err)
+				}
+			} else {
+				// Successfully removed the file
+				// For hidden directories, we log this as it's a common source of issues
+				if isHidden {
+					fmt.Fprintf(os.Stderr, "Note: Converting file to directory: %s\n", dirPath)
 				}
 			}
+		}
 
-			if onCreate != nil {
-				onCreate(dirPath, true)
-			}
+		if onCreate != nil {
+			onCreate(dirPath, true)
+		}
 
-			// Create the directory
-			if err := os.MkdirAll(dirPath, 0o755); err != nil {
-				return err
-			}
+		// Create the directory
+		if err := os.MkdirAll(dirPath, 0o755); err != nil {
+			return err
 		}
 	}
 

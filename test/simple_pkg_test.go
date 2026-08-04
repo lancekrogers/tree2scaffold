@@ -40,13 +40,7 @@ func TestPackageInference(t *testing.T) {
 		treeInput := fmt.Sprintf("test/\n├── %s    %s", path, comment)
 
 		// Run tree2scaffold for each file
-		// Make sure we're using the binary from the bin directory
-		binaryPath := filepath.Join("..", "bin", "tree2scaffold")
-		if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-			binaryPath = "tree2scaffold" // Fall back to PATH lookup
-		}
-
-		cmd := exec.Command(binaryPath, "-root", tmpDir, "-yes")
+		cmd := exec.Command(scaffoldBin, "-root", tmpDir, "-yes")
 		cmd.Stdin = strings.NewReader(treeInput)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
