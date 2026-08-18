@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/hero.jpg" width="880" alt="Laptop split view: ASCII tree in a terminal, the same files appearing in a folder">
+</p>
+
 # tree2scaffold (`t2s`)
 
 **The LLM gave you a tree. This makes the files.**
